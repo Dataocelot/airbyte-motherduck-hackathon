@@ -329,6 +329,7 @@ class PdfManualParser:
         return save_to_path
 
     def _extract_toc_img(self) -> TocSection | None:
+        toc_details = None
         if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
                 toc_page_img_uri = self.save_toc_to_img()
@@ -371,6 +372,7 @@ class PdfManualParser:
                             toc_mapping=toc_mapping,
                         )
             except Exception as e:
+                print(e)
                 logger.error(f"Error extracting TOC using GEMINI: {e}")
 
         elif self.toc_mapping_method == ExtractorOption.PYMUPDF:
