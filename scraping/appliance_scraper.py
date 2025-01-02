@@ -284,7 +284,7 @@ class SiteScraper:
         return toc_details
 
 
-class PdfParser:
+class PdfManualParser:
     def __init__(self, pdf_path: str, toc_mapping_method: ExtractorOption):
         self.pdf_path = Path(pdf_path)
         self.toc_mapping_method = toc_mapping_method
