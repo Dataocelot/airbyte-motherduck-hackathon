@@ -285,11 +285,33 @@ class SiteScraper:
 
 
 class PdfManualParser:
-    def __init__(self, pdf_path: str, toc_mapping_method: ExtractorOption):
+    def __init__(
+        self,
+        pdf_path: str,
+        toc_mapping_method: ExtractorOption,
+        output_path: str | Path | None = None,
+    ):
         self.pdf_path = Path(pdf_path)
+        self.filename = self.pdf_path.name
         self.toc_mapping_method = toc_mapping_method
         self.document = pymupdf.open(self.pdf_path)
-        self.parent_path = self.pdf_path.parent
+        self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
+
+        if output_path:
+            self.output_path = output_path
+        else:
+
+            date = datetime.datetime.now().strftime("%Y-%m-%d")
+            output_path = (
+                Path(self.root_data_dir)
+                / "output"
+                / f"brand={self.brand}"
+                / f"date={date}"
+                / f"filename={self.filename}"
+            )
+
+            auto_create_dir(output_path)
+            self.output_path = output_path
 
     def extract_to_markdown(self):
         self.markdown_text = pymupdf4llm.to_markdown(self.document)
@@ -321,7 +343,7 @@ class PdfManualParser:
         try:
             self.toc_page = self._get_toc_page(max_page_to_search)
             pix = self.toc_page.get_pixmap()
-            save_to_path = f"{self.parent_path}/toc_{self.toc_page.number}.png"
+            save_to_path = f"{self.output_path}/toc_{self.toc_page.number}.png"
             pix.save(save_to_path)
             logger.info(save_to_path)
         except Exception as e:
