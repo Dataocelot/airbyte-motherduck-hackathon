@@ -139,34 +139,34 @@ def save_html_to_file(html: str, directory: str, file_name: str) -> str:
     return file_name
 
 
-def save_appliance_categories(directory: str, appliance_type: str) -> str | None:
-    """
-    Save the appliance categories to a file
+# def save_appliance_categories(directory: str, appliance_type: str) -> str | None:
+#     """
+#     Save the appliance categories to a file
 
-    Parameters
-    ----------
-    directory : str
-        The directory to save the appliance categories to
-    appliance_type : str
-        The type of appliance to get the brands for
+#     Parameters
+#     ----------
+#     directory : str
+#         The directory to save the appliance categories to
+#     appliance_type : str
+#         The type of appliance to get the brands for
 
-    Returns
-    -------
-    str
-        The path to the file where the appliance categories were saved
-    """
-    appliance_type = appliance_type.upper()
+#     Returns
+#     -------
+#     str
+#         The path to the file where the appliance categories were saved
+#     """
+#     appliance_type = appliance_type.upper()
 
-    appliance_url = f"{WEBSITE_URL}/{appliance_type}"
-    raw_html = get_html_content(appliance_url)
-    partitioned_dir = datetime.datetime.now().strftime("%Y%m%d")
-    if raw_html:
-        return save_html_to_file(
-            raw_html,
-            f"{directory}/{partitioned_dir}/{appliance_type}",
-            "appliance_brands",
-        )
-    return None
+#     appliance_url = f"{WEBSITE_URL}/{appliance_type}"
+#     raw_html = get_html_content(appliance_url)
+#     partitioned_dir = datetime.datetime.now().strftime("%Y%m%d")
+#     if raw_html:
+#         return save_html_to_file(
+#             raw_html,
+#             f"{directory}/{partitioned_dir}/{appliance_type}",
+#             "appliance_brands",
+#         )
+#     return None
 
 
 class ManualSection:
@@ -176,7 +176,7 @@ class ManualSection:
         page_url: str,
         page_start: int,
         page_end: int,
-        document: Document,
+        document: "Document",
         source_type: SourceTypeOption,
     ):
         self.title = title
@@ -186,17 +186,27 @@ class ManualSection:
         self.document = document
         self.source_type = source_type
 
-    def parse_manual_section(self, raw_html: str):
-        """
-        Parse the manual section details from the raw HTML
-        """
-        # TODO
-        # self.raw_text = raw_text
-        # self.markdown = markdown
-        pass
+    def __repr__(self):
+        return (
+            f"ManualSection("
+            f"title='{self.title}', "
+            f"page_url='{self.page_url}', "
+            f"page_start={self.page_start}, "
+            f"page_end={self.page_end}, "
+            f"document={self.document}, "
+            f"source_type={self.source_type.name}"  # Use Enum member name for better readability
+            f")"
+        )
+
+    def __str__(self):
+        return (
+            f"Manual Section of '{self.title}' spanning pages "
+            f"{self.page_start} to {self.page_end}. "
+            f"Find the document at {self.page_url}"
+        )
 
 
-class TocDetails(ManualSection):
+class TocSection(ManualSection):
     def __init__(
         self,
         title: str,
@@ -205,12 +215,27 @@ class TocDetails(ManualSection):
         page_end: int,
         document: Document,
         source_type: SourceTypeOption,
-        convert_type: SourceTypeOption,
+        extraction_type: SourceTypeOption,
         toc_mapping: dict,
     ):
         super().__init__(title, page_uri, page_start, page_end, document, source_type)
         self.toc_mapping = toc_mapping
-        self.convert_type = convert_type
+        self.extraction_type = extraction_type
+
+    def __repr__(self):
+        return f"""
+            TocSection(
+                title={self.title}
+                page_url={self.page_start},
+                page_start={self.page_end},
+                page_end={self.page_end},
+                document={self.page_end},
+                source_type={self.source_type},
+                extraction_type={self.extraction_type},
+                source_type={self.source_type}
+                toc_mapping={self.toc_mapping}
+            )
+        """
 
 
 class SiteScraper:
@@ -303,42 +328,56 @@ class PdfParser:
             logger.error(f"Error saving table of contents to image: {e}")
         return save_to_path
 
-    def _extract_toc_img(self, method: ExtractorOption) -> TocDetails | None:
-        if method == ExtractorOption.GEMINI:
+    def _extract_toc_img(self) -> TocSection | None:
+        if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
                 toc_page_img_uri = self.save_toc_to_img()
                 if toc_page_img_uri:
-                    files = [upload_to_gemini(toc_page_img_uri, mime_type="image/png")]
+                    file = upload_to_gemini(toc_page_img_uri, mime_type="image/png")
                     chat_session = model.start_chat(
                         history=[
                             {
                                 "role": "user",
                                 "parts": [
-                                    files[0],
-                                    "identify the parts and return their bound\n boxes",
+                                    file,
+                                    """From this image, give me the page numbers for the sections,
+                                        The result should be a key value pair with the section name as the key
+                                        and page number as the value. Make the page_number an integer,
+                                        and make all section names lowercase.
+
+                                        Example:
+                                        {
+                                            "introduction": 1,
+                                            "installation": 3,
+                                            "usage": 5,
+                                            "maintenance": 7,
+                                            "troubleshooting": 9,
+                                        }
+                                    """,
                                 ],
                             },
                         ]
                     )
                     response = chat_session.send_message("pathob\n")
                     if toc_mapping := json.loads(response.text):
-                        toc_details = TocDetails(
+                        toc_details = TocSection(
                             title="TOC",
                             page_uri=toc_page_img_uri,
                             page_start=self.toc_page.number,
                             page_end=self.toc_page.number,
                             document=self.document,
                             source_type=SourceTypeOption.PDF,
-                            convert_type=SourceTypeOption.IMAGE,
+                            extraction_type=SourceTypeOption.IMAGE,
                             toc_mapping=toc_mapping,
                         )
             except Exception as e:
                 logger.error(f"Error extracting TOC using GEMINI: {e}")
 
-        elif method == ExtractorOption.PYMUPDF:
+        elif self.toc_mapping_method == ExtractorOption.PYMUPDF:
             # The text extraction method
+            # TODO: implement this later
             pass
-        elif method == ExtractorOption.TESSERACT:
+        elif self.toc_mapping_method == ExtractorOption.TESSERACT:
             # TODO: Do this later
             pass
         return toc_details
