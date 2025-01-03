@@ -1,10 +1,7 @@
-Dishwasher
+## WeFixDishwashers
 
-We are a Dishwasher repairing company and we repair dishwashers
-We have an online LLM to help our employees easily debug dishwashers
-Data is sourced from
+WeFixDishwashers is a Dishwasher repairing company that repairs dishwashers for clients around the United Kingdom.
 
-https://www.searspartsdirect.com/diy/error-codes/dishwasher-repair/1234583
+We have an online interactive chatbot that helps both our employees to help our employees easily debug dishwashers
 
-https://www.ifixit.com/Device/Dishwasher
-https://www.appliancefactoryparts.com/dishwashers/
+User & Service manuals are uploaded manually for specific Dishwasher brands via our portal
