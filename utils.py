@@ -1,6 +1,8 @@
 import hashlib
+import json
 import os
 from enum import Enum
+from pathlib import Path
 
 from logger import Logger
 
@@ -8,7 +10,7 @@ logger_instance = Logger()
 logger = logger_instance.get_logger()
 
 
-def auto_create_dir(directory: str) -> None:
+def auto_create_dir(directory: str | Path) -> None:
     """
     Check if a directory exists, and if not, create it
 
@@ -49,6 +51,16 @@ def get_hash_from_file(file_path: str) -> str:
     except Exception as e:
         logger.error(f"Error getting hash from file: {e}")
         raise e
+
+
+# Save the dictionary to a JSON file
+def save_dict_to_json(data, file_path):
+    try:
+        with open(file_path, "w") as json_file:
+            json.dump(data, json_file, indent=4)
+        print(f"Data successfully saved to {file_path}")
+    except Exception as e:
+        print(f"Error saving data to JSON: {e}")
 
 
 def check_file_hash(file_path: str, hash_value: str) -> bool:
