@@ -97,3 +97,30 @@ class ExtractorOption(Enum):
     GEMINI = "gemini"
     TESSERACT = "tesseract"
     PYMUPDF = "pymupdf"
+
+
+TOC_IMAGE_PROMPT = """
+                    This is a table of contents image in a user manual for a {device}. Give me a Json of all sections and subsections with their page numbers.
+                    The result should be a key value pair with the section/subsection name as the key and page number as the value.
+                    The section names should all be in snakecase
+                    Make the section names all nakecase, page_numbers an integer, and make all section names lowercase, remove any encoding.
+
+                    Example:
+                    {
+                        "introduction": 1,
+                        "installation_of_parts": 3,
+                        "usage": 5,
+                        "maintenance": 7,
+                        "troubleshooting": 9,
+                    }
+                    “"""
+
+TROUBLESHOOTING_PROMPT = """This a table of contents image in a user manual, I want you to extract the relevant sections and page numbers (key, value) in JSON that you think will be related to troubleshooting section from this image.
+                            The result should be a list of section names that you think are related to parts of the dishwasher.
+                            Make sure the section names are in snakecase and all lowercase."""
+
+PARTS_PROMPT = """This a table of contents image in a {device} user manual, I want you to extract the relevant sections you think that are related to where I might be able to find an image of parts for the Dishwasher.
+                    The result should be a list of section names that you think are related to parts of the dishwasher.
+                    Make the page_number an integer, and make all section names lowercase, remove any encoding.
+
+                    Make sure the section names are in snakecase and all lowercase."""

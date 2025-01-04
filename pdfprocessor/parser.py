@@ -16,11 +16,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from utils import (
+    TOC_IMAGE_PROMPT,
     ExtractorOption,
     Logger,
     ScraperOption,
     SourceTypeOption,
     auto_create_dir,
+    save_dict_to_json,
 )
 
 # Initialize logger
@@ -51,9 +53,39 @@ def upload_to_gemini(path, mime_type=None):
 
     See https://ai.google.dev/gemini-api/docs/prompting_with_media
     """
-    file = genai.upload_file(path, mime_type=mime_type)
-    print(f"Uploaded file '{file.display_name}' as: {file.uri}")
-    return file
+    try:
+        file = genai.upload_file(path, mime_type=mime_type)
+        logger.info(f"Uploaded file '{file.display_name}' as: {file.uri}")
+        print(f"Uploaded file '{file.display_name}' as: {file.uri}")
+        if file:
+            return file
+        else:
+            logger.error("File upload failed, no file returned.")
+            return None
+    except Exception as e:
+        logger.error(f"Failed to upload file to Gemini: {e}")
+        return None
+
+
+# def prompt_gemini_with_file(file, prompt):
+#     """Prompts Gemini with the given file and prompt.
+
+#     See https://ai.google.dev/gemini-api/docs/prompting_with_media
+#     """
+#     if file.mimeType in ("png", "jpeg" "jpg"):
+#         file = upload_to_gemini(file, mime_type="image/{file.}")
+#     chat_session = model.start_chat(
+#         history=[
+#             {
+#                 "role": "user",
+#                 "parts": [
+#                     file,
+#                     TOC_IMAGE_PROMPT.format(device=self.device),
+#                 ],
+#             },
+#         ]
+#     )
+#     response = chat_session.send_message("pathob\n")
 
 
 # Configure ChromeDriver to headless mode
@@ -173,14 +205,14 @@ class ManualSection:
     def __init__(
         self,
         title: str,
-        page_url: str,
+        page_uri: str,
         page_start: int,
         page_end: int,
         document: "Document",
         source_type: SourceTypeOption,
     ):
         self.title = title
-        self.page_url = page_url
+        self.page_uri = page_uri
         self.page_start = page_start
         self.page_end = page_end
         self.document = document
@@ -190,11 +222,11 @@ class ManualSection:
         return (
             f"ManualSection("
             f"title='{self.title}', "
-            f"page_url='{self.page_url}', "
+            f"page_uri='{self.page_uri}', "
             f"page_start={self.page_start}, "
             f"page_end={self.page_end}, "
             f"document={self.document}, "
-            f"source_type={self.source_type.name}"  # Use Enum member name for better readability
+            f"source_type={self.source_type.name}"
             f")"
         )
 
@@ -202,7 +234,7 @@ class ManualSection:
         return (
             f"Manual Section of '{self.title}' spanning pages "
             f"{self.page_start} to {self.page_end}. "
-            f"Find the document at {self.page_url}"
+            f"Find the document at {self.page_uri}"
         )
 
 
@@ -213,29 +245,39 @@ class TocSection(ManualSection):
         page_uri: str,
         page_start: int,
         page_end: int,
-        document: Document,
+        document: "Document",
         source_type: SourceTypeOption,
         extraction_type: SourceTypeOption,
+        destination_type: SourceTypeOption,
         toc_mapping: dict,
     ):
         super().__init__(title, page_uri, page_start, page_end, document, source_type)
-        self.toc_mapping = toc_mapping
         self.extraction_type = extraction_type
+        self.destination_type = destination_type
+        self.toc_mapping = toc_mapping
 
     def __repr__(self):
         return f"""
             TocSection(
                 title={self.title}
-                page_url={self.page_start},
-                page_start={self.page_end},
+                page_uri={self.page_uri},
+                page_start={self.page_start},
                 page_end={self.page_end},
                 document={self.page_end},
                 source_type={self.source_type},
                 extraction_type={self.extraction_type},
-                source_type={self.source_type}
+                destination_type={self.destination_type}
                 toc_mapping={self.toc_mapping}
             )
         """
+
+    def __str__(self):
+        return (
+            f"Manual Section of '{self.title}' spanning pages "
+            f"{self.page_start} to {self.page_end}. "
+            f"Find the document at {self.page_uri}"
+            f"Extraction process {self.source_type.name} -> {self.extraction_type.name} -> {self.destination_type.name}"
+        )
 
 
 class SiteScraper:
@@ -288,13 +330,15 @@ class PdfManualParser:
     def __init__(
         self,
         pdf_path: str,
+        device: str,
         toc_mapping_method: ExtractorOption,
         output_path: str | Path | None = None,
     ):
         self.pdf_path = Path(pdf_path)
-        self.filename = self.pdf_path.name
+        self.filename = self.pdf_path.stem
         self.toc_mapping_method = toc_mapping_method
         self.document = pymupdf.open(self.pdf_path)
+        self.device = device
         self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
 
         if output_path:
@@ -307,10 +351,15 @@ class PdfManualParser:
                 / "output"
                 / f"brand={self.brand}"
                 / f"date={date}"
-                / f"filename={self.filename}"
+                / f"{self.filename}"
             )
 
-            auto_create_dir(output_path)
+            self.toc_path = output_path / "toc"
+            auto_create_dir(self.toc_path)
+
+            self.troubleshooting_path = output_path / "troubleshooting"
+            auto_create_dir(self.troubleshooting_path)
+
             self.output_path = output_path
 
     def extract_to_markdown(self):
@@ -343,7 +392,7 @@ class PdfManualParser:
         try:
             self.toc_page = self._get_toc_page(max_page_to_search)
             pix = self.toc_page.get_pixmap()
-            save_to_path = f"{self.output_path}/toc_{self.toc_page.number}.png"
+            save_to_path = f"{self.toc_path}/toc_{self.toc_page.number}.png"
             pix.save(save_to_path)
             logger.info(save_to_path)
         except Exception as e:
@@ -351,7 +400,8 @@ class PdfManualParser:
         return save_to_path
 
     def _extract_toc_img(self) -> TocSection | None:
-        toc_details = None
+        pass
+        # TODO: change to function utility extract_img_to_json
         if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
                 toc_page_img_uri = self.save_toc_to_img()
@@ -363,26 +413,25 @@ class PdfManualParser:
                                 "role": "user",
                                 "parts": [
                                     file,
-                                    """From this image, give me the page numbers for the sections,
-                                        The result should be a key value pair with the section name as the key
-                                        and page number as the value. Make the page_number an integer,
-                                        and make all section names lowercase.
-
-                                        Example:
-                                        {
-                                            "introduction": 1,
-                                            "installation": 3,
-                                            "usage": 5,
-                                            "maintenance": 7,
-                                            "troubleshooting": 9,
-                                        }
-                                    """,
+                                    TOC_IMAGE_PROMPT.format(
+                                        device=self.device,
+                                        file_type="image",
+                                        result_type="JSON",
+                                    ),
                                 ],
                             },
                         ]
                     )
-                    response = chat_session.send_message("pathob\n")
-                    if toc_mapping := json.loads(response.text):
+                    try:
+                        toc_mapping = json.loads(response.text)
+                    except json.JSONDecodeError:
+                        toc_mapping = None
+                    try:
+                        toc_mapping = json.loads(response.text)
+                        save_dict_to_json(
+                            toc_mapping, f"{self.toc_path}/toc_mapping.json"
+                        )
+
                         toc_details = TocSection(
                             title="TOC",
                             page_uri=toc_page_img_uri,
@@ -391,17 +440,28 @@ class PdfManualParser:
                             document=self.document,
                             source_type=SourceTypeOption.PDF,
                             extraction_type=SourceTypeOption.IMAGE,
+                            destination_type=SourceTypeOption.JSON,
                             toc_mapping=toc_mapping,
                         )
+                        logger.info("Table of contents extracted")
+                    except json.JSONDecodeError as e:
+                        logger.error(f"Failed to decode JSON response: {e}")
             except Exception as e:
-                print(e)
+                logger.error(f"Error extracting TOC using GEMINI: {e}")
+                logger.error(e)
                 logger.error(f"Error extracting TOC using GEMINI: {e}")
 
         elif self.toc_mapping_method == ExtractorOption.PYMUPDF:
-            # The text extraction method
-            # TODO: implement this later
-            pass
-        elif self.toc_mapping_method == ExtractorOption.TESSERACT:
-            # TODO: Do this later
+            # TODO: Implement text extraction from the table of contents using PyMuPDF.
+            # This will involve searching for the text "contents" in the first few pages,
+            # extracting the text from the identified TOC page, and parsing the text to extract the TOC details.
+            # TODO: Implement text extraction from the table of contents image using Tesseract OCR.
+            # This will involve converting the image to text using Tesseract OCR,
+            # and then parsing the extracted text to extract the TOC details.
+            # TODO: Implement text extraction from the table of contents image using Tesseract OCR.
+            # This will involve converting the image to text and then parsing the text to extract the TOC details.
             pass
         return toc_details
+
+    def _extract_troubleshooting_to_md(self):
+        pass
