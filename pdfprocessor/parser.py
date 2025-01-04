@@ -16,9 +16,11 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 from utils import (
+    JSON_PG_NUM_PROMPT,
     TOC_IMAGE_PROMPT,
     ExtractorOption,
     Logger,
+    PageContentSearchType,
     ScraperOption,
     SourceTypeOption,
     auto_create_dir,
@@ -47,6 +49,26 @@ model = genai.GenerativeModel(
     generation_config=generation_config,
 )
 
+EXPECTED_TOC_OUTPUT = """
+            {
+                "section_name": {
+                    "page_number": int,
+                    "subsections": {
+                        "subsection_name": int,
+                        "subsection_name2": int
+                    }
+                },
+                "section_name2": {
+                    "page_number": int,
+                    "subsections": {
+                        "subsection_name": int
+                    }
+                }
+            }
+"""
+
+EXPECTED_TROBULESHOOTING_OUTPUT = "{subsection_name: [start_page_number, end_page_number], subsection_name2: [start_page_number, end_page_number]}"
+
 
 def upload_to_gemini(path, mime_type=None):
     """Uploads the given file to Gemini.
@@ -54,9 +76,8 @@ def upload_to_gemini(path, mime_type=None):
     See https://ai.google.dev/gemini-api/docs/prompting_with_media
     """
     try:
-        file = genai.upload_file(path, mime_type=mime_type)
+        file = genai.upload_file(path)
         logger.info(f"Uploaded file '{file.display_name}' as: {file.uri}")
-        print(f"Uploaded file '{file.display_name}' as: {file.uri}")
         if file:
             return file
         else:
@@ -67,25 +88,58 @@ def upload_to_gemini(path, mime_type=None):
         return None
 
 
-# def prompt_gemini_with_file(file, prompt):
-#     """Prompts Gemini with the given file and prompt.
+def extract_using_gemini(
+    file_uri, mime_type, prompt, dest_filename, **kwargs
+) -> dict | None:
+    """
+    Extract details using GEMINI
 
-#     See https://ai.google.dev/gemini-api/docs/prompting_with_media
-#     """
-#     if file.mimeType in ("png", "jpeg" "jpg"):
-#         file = upload_to_gemini(file, mime_type="image/{file.}")
-#     chat_session = model.start_chat(
-#         history=[
-#             {
-#                 "role": "user",
-#                 "parts": [
-#                     file,
-#                     TOC_IMAGE_PROMPT.format(device=self.device),
-#                 ],
-#             },
-#         ]
-#     )
-#     response = chat_session.send_message("pathob\n")
+    Parameters
+    ----------
+    file_uri : str
+        The URI of the file to extract details from
+    mime_type : str
+        The MIME type of the file
+    prompt : str
+        The prompt to use to extract details
+    dest_filename : str
+        The name of the file to save the extracted details to
+    kwargs : dict
+        Optional keyword arguments to format the prompt
+
+    Returns
+    -------
+    dict|None
+        The extracted details or None if an error occurred
+    """
+
+    try:
+        if "parts" in kwargs:
+            parts = kwargs["parts"]
+        else:
+            file = upload_to_gemini(file_uri, mime_type=mime_type)
+            parts = [file, prompt.format(**kwargs)]
+            print(file)
+
+        chat_session = model.start_chat(
+            history=[
+                {"role": "user", "parts": parts},
+            ]
+        )
+        response = chat_session.send_message("pathob\n")
+        print(1)
+        try:
+            json_response = json.loads(response.text)
+            save_dict_to_json(
+                json_response, Path(file_uri).parent / f"{dest_filename}.json"
+            )
+            return json_response
+        except json.JSONDecodeError as e:
+            logger.error(f"Failed to decode JSON response: {e}")
+            return None
+    except Exception as e:
+        logger.error(f"Error extracting details using GEMINI: {e}")
+        return None
 
 
 # Configure ChromeDriver to headless mode
@@ -205,14 +259,14 @@ class ManualSection:
     def __init__(
         self,
         title: str,
-        page_uri: str,
+        page_uris: list[str],
         page_start: int,
         page_end: int,
         document: "Document",
         source_type: SourceTypeOption,
     ):
         self.title = title
-        self.page_uri = page_uri
+        self.page_uris = page_uris
         self.page_start = page_start
         self.page_end = page_end
         self.document = document
@@ -222,7 +276,7 @@ class ManualSection:
         return (
             f"ManualSection("
             f"title='{self.title}', "
-            f"page_uri='{self.page_uri}', "
+            f"page_uris='{self.page_ursi}', "
             f"page_start={self.page_start}, "
             f"page_end={self.page_end}, "
             f"document={self.document}, "
@@ -234,7 +288,7 @@ class ManualSection:
         return (
             f"Manual Section of '{self.title}' spanning pages "
             f"{self.page_start} to {self.page_end}. "
-            f"Find the document at {self.page_uri}"
+            f"Find the document(s) at {self.page_uris}"
         )
 
 
@@ -242,7 +296,7 @@ class TocSection(ManualSection):
     def __init__(
         self,
         title: str,
-        page_uri: str,
+        page_uris: list[str],
         page_start: int,
         page_end: int,
         document: "Document",
@@ -250,17 +304,19 @@ class TocSection(ManualSection):
         extraction_type: SourceTypeOption,
         destination_type: SourceTypeOption,
         toc_mapping: dict,
+        simplified_toc_mapping: dict,
     ):
-        super().__init__(title, page_uri, page_start, page_end, document, source_type)
+        super().__init__(title, page_uris, page_start, page_end, document, source_type)
         self.extraction_type = extraction_type
         self.destination_type = destination_type
         self.toc_mapping = toc_mapping
+        self.simplified_toc_mapping = simplified_toc_mapping
 
     def __repr__(self):
         return f"""
             TocSection(
                 title={self.title}
-                page_uri={self.page_uri},
+                page_uris={self.page_uris},
                 page_start={self.page_start},
                 page_end={self.page_end},
                 document={self.page_end},
@@ -275,7 +331,7 @@ class TocSection(ManualSection):
         return (
             f"Manual Section of '{self.title}' spanning pages "
             f"{self.page_start} to {self.page_end}. "
-            f"Find the document at {self.page_uri}"
+            f"Find the document(s) at {self.page_uris}"
             f"Extraction process {self.source_type.name} -> {self.extraction_type.name} -> {self.destination_type.name}"
         )
 
@@ -362,106 +418,208 @@ class PdfManualParser:
 
             self.output_path = output_path
 
-    def extract_to_markdown(self):
-        self.markdown_text = pymupdf4llm.to_markdown(self.document)
-
-    def _get_toc_page(self, max_page_to_search: int = 5) -> pymupdf.Page:
-        page_matches = {
-            i: self.document.search_page_for(i, text="contents")
-            for i in range(max_page_to_search)
-        }
-        highest_pg_matches = max(page_matches.items(), key=lambda x: x[1])
-
-        if page_no := highest_pg_matches[0]:
-            logger.info(f"Table of contents most likely on page {page_no}")
-            toc_page = self.document[page_no]
-            return toc_page
-        else:
-            logger.error("Could not find table of contents")
-
-    def save_toc_to_img(self, max_page_to_search: int = 5) -> str | None:
+    def _extract_to_markdown(self, document: Document) -> str:
         """
-        Save the table of contents as an image
+        Extract a Document to Markdown
 
         Parameters
         ----------
-        max_page_to_search : int, optional
-            The maximum page to search in the PDF, by default 5
+        document : Document
+            The Document to extract to Markdown
         """
-        save_to_path = None
+        return pymupdf4llm.to_markdown(document)
+
+    def extract_all_subsections(self, section_mapping: dict) -> dict:
+        """
+        Extract all subsections from the section mapping
+
+        Parameters
+        ----------
+        section_mapping : dict
+            The mapping of sections to subsections
+
+        Returns
+        -------
+        dict
+            The mapping of all subsections to their page numbers
+        """
+        all_subsections = {}
+        for _, details in section_mapping.items():
+            for subsection, page_number in details["subsections"].items():
+                all_subsections[subsection] = page_number
+        result = {}
+        for i, (key, value) in enumerate(all_subsections.items()):
+            if i == len(all_subsections) - 1:
+                result[key] = [value, None]
+            else:
+                result[key] = [value, value + 1]
+        return result
+
+    def _get_consecutive_pages(self, page_matches):
+        pg_no_matches = []
+        previous_page = None
+        for current_page, current_value in page_matches.items():
+            if current_value:
+                if previous_page is not None:
+                    if previous_page + 1 == current_page:
+                        pg_no_matches.append(previous_page)
+                        pg_no_matches.append(current_page)
+                else:
+                    pg_no_matches.append(current_page)
+            previous_page = current_page if current_value else None
+        return list(set(pg_no_matches))
+
+    def _get_pages_with_content(
+        self,
+        search_content: str,
+        pages_to_search: int | list = 5,
+        search_method: PageContentSearchType = PageContentSearchType.CONSECUTIVE_PAGES,
+    ) -> list[pymupdf.Page] | None:
+        """
+        Get the pages with the content
+
+        Parameters
+        ----------
+        search_content : str
+            The content to search for in the pages
+        pages_to_search : int | list, optional
+            The maximum page(s) to search in the PDF, by default 5
+        search_method : str, optional
+            The method to use to search for the content, by default PageContentSearchType.CONSECUTIVE_PAGES
+        Returns
+        -------
+        list[pymupdf.Page] | None
+            The pages with the content or None if the content was not found
+        """
+
+        if isinstance(pages_to_search, int):
+            pages_search_list = range(pages_to_search)
+            if pages_to_search > len(self.document):
+                logger.info(
+                    "Pages to search exceeds the number of pages in the document, so searching all pages"
+                )
+                pages_search_list = range(len(self.document))
+
+        page_matches = {
+            i: self.document[i].search_for(search_content) for i in pages_search_list
+        }
+
+        logger.info(page_matches)
+
+        pg_no_matches: list = []
+        if search_method == PageContentSearchType.EARLIEST_PAGE_FIRST:
+            if page_matches:
+                for page_match in page_matches:
+                    if page_matches[page_match]:
+                        pg_no_matches.append(page_match)
+                        break
+
+        elif search_method == PageContentSearchType.CONSECUTIVE_PAGES:
+            pg_no_matches = self._get_consecutive_pages(page_matches)
+
+        if pg_no_matches:
+            logger.info(
+                f"The search content with {search_content} most likely on page {pg_no_matches}"
+            )
+            pages = [self.document[page_no] for page_no in pg_no_matches]
+            return pages
+        logger.error(f"Could not find {search_content} in the Document")
+        return None
+
+    def save_search_content_to_img(
+        self, filepath: Path | str, search_content, pages_to_search: int | list = 5
+    ) -> list:
+        """
+        Save the searched content pages to image(s)
+
+        Parameters
+        ----------
+        search_content : str
+            The content to search for in the pages
+        pages_to_search : int, list, optional
+            The maximum page(s) to search in the PDF, by default 5
+        """
+        saved_paths = []
         try:
-            self.toc_page = self._get_toc_page(max_page_to_search)
-            pix = self.toc_page.get_pixmap()
-            save_to_path = f"{self.toc_path}/toc_{self.toc_page.number}.png"
-            pix.save(save_to_path)
-            logger.info(save_to_path)
+            self.matched_pages = self._get_pages_with_content(
+                search_content=search_content, pages_to_search=pages_to_search
+            )
+            if self.matched_pages:
+                for matched_page in self.matched_pages:
+                    pix = matched_page.get_pixmap()
+                    save_to_path = f"{filepath}_{matched_page.number}.png"
+                    pix.save(save_to_path)
+                    saved_paths.append((matched_page, save_to_path))
+                    logger.info(save_to_path)
         except Exception as e:
             logger.error(f"Error saving table of contents to image: {e}")
-        return save_to_path
+        return saved_paths
 
-    def _extract_toc_img(self) -> TocSection | None:
-        pass
-        # TODO: change to function utility extract_img_to_json
+    def _extract_toc_from_img(self) -> TocSection | None:
         if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
-                toc_page_img_uri = self.save_toc_to_img()
-                if toc_page_img_uri:
-                    file = upload_to_gemini(toc_page_img_uri, mime_type="image/png")
-                    chat_session = model.start_chat(
-                        history=[
-                            {
-                                "role": "user",
-                                "parts": [
-                                    file,
-                                    TOC_IMAGE_PROMPT.format(
-                                        device=self.device,
-                                        file_type="image",
-                                        result_type="JSON",
-                                    ),
-                                ],
-                            },
-                        ]
+                pages_uris = self.save_search_content_to_img(
+                    self.toc_path / "toc", search_content="contents"
+                )
+                toc_mappings = {}
+                for _, uri in pages_uris:
+                    toc_mapping = extract_using_gemini(
+                        file_uri=uri,
+                        mime_type="image/png",
+                        dest_filename="toc_mapping",
+                        prompt=TOC_IMAGE_PROMPT,
+                        file_type="image",
+                        device=self.device,
+                        dest_file_type="JSON",
+                        expected_output=EXPECTED_TOC_OUTPUT,
                     )
-                    try:
-                        toc_mapping = json.loads(response.text)
-                    except json.JSONDecodeError:
-                        toc_mapping = None
-                    try:
-                        toc_mapping = json.loads(response.text)
-                        save_dict_to_json(
-                            toc_mapping, f"{self.toc_path}/toc_mapping.json"
-                        )
+                    if toc_mapping:
+                        toc_mappings.update(toc_mapping)
 
-                        toc_details = TocSection(
-                            title="TOC",
-                            page_uri=toc_page_img_uri,
-                            page_start=self.toc_page.number,
-                            page_end=self.toc_page.number,
-                            document=self.document,
-                            source_type=SourceTypeOption.PDF,
-                            extraction_type=SourceTypeOption.IMAGE,
-                            destination_type=SourceTypeOption.JSON,
-                            toc_mapping=toc_mapping,
-                        )
-                        logger.info("Table of contents extracted")
-                    except json.JSONDecodeError as e:
-                        logger.error(f"Failed to decode JSON response: {e}")
+                if toc_mappings:
+                    page_start = pages_uris[0][0]
+                    page_end = pages_uris[-1][0]
+                    simplified_toc_map = self.extract_all_subsections(toc_mappings)
+                    toc_details = TocSection(
+                        title="TOC",
+                        page_uris=pages_uris,
+                        page_start=page_start,
+                        page_end=page_end,
+                        document=self.document,
+                        source_type=SourceTypeOption.PDF,
+                        extraction_type=SourceTypeOption.IMAGE,
+                        destination_type=SourceTypeOption.JSON,
+                        toc_mapping=toc_mappings,
+                        simplified_toc_mapping=simplified_toc_map,
+                    )
+                    save_dict_to_json(
+                        simplified_toc_map,
+                        self.toc_path / "simplified_toc_mapping.txt",
+                    )
+                    logger.info("Table of contents extracted")
+                return toc_details
             except Exception as e:
-                logger.error(f"Error extracting TOC using GEMINI: {e}")
-                logger.error(e)
                 logger.error(f"Error extracting TOC using GEMINI: {e}")
 
         elif self.toc_mapping_method == ExtractorOption.PYMUPDF:
             # TODO: Implement text extraction from the table of contents using PyMuPDF.
-            # This will involve searching for the text "contents" in the first few pages,
-            # extracting the text from the identified TOC page, and parsing the text to extract the TOC details.
-            # TODO: Implement text extraction from the table of contents image using Tesseract OCR.
-            # This will involve converting the image to text using Tesseract OCR,
-            # and then parsing the extracted text to extract the TOC details.
-            # TODO: Implement text extraction from the table of contents image using Tesseract OCR.
-            # This will involve converting the image to text and then parsing the text to extract the TOC details.
             pass
-        return toc_details
+        return None
 
-    def _extract_troubleshooting_to_md(self):
-        pass
+    def estimate_troubleshooting_sections(self):
+        toc_details = self._extract_toc_from_img()
+
+        if toc_details:
+            est_troubleshooting_page_num = extract_using_gemini(
+                file_uri=self.toc_path / "simplified_toc_mapping.txt",
+                mime_type="text/plain",
+                dest_filename="troubleshooting_page",
+                prompt=JSON_PG_NUM_PROMPT,
+                file_type="json",
+                device=self.device,
+                subject_of_interest="troubleshooting",
+                dest_file_type="JSON",
+                expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
+            )
+
+            return est_troubleshooting_page_num
