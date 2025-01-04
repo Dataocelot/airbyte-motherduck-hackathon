@@ -119,7 +119,6 @@ def extract_using_gemini(
         else:
             file = upload_to_gemini(file_uri, mime_type=mime_type)
             parts = [file, prompt.format(**kwargs)]
-            print(file)
 
         chat_session = model.start_chat(
             history=[
@@ -127,11 +126,10 @@ def extract_using_gemini(
             ]
         )
         response = chat_session.send_message("pathob\n")
-        print(1)
         try:
             json_response = json.loads(response.text)
             save_dict_to_json(
-                json_response, Path(file_uri).parent / f"{dest_filename}.json"
+                json_response, Path(file_uri).parent / f"{dest_filename}.txt"
             )
             return json_response
         except json.JSONDecodeError as e:
@@ -611,7 +609,7 @@ class PdfManualParser:
 
         if toc_details:
             est_troubleshooting_page_num = extract_using_gemini(
-                file_uri=self.toc_path / "simplified_toc_mapping.txt",
+                file_uri=self.troubleshooting_path / "simplified_toc_mapping.txt",
                 mime_type="text/plain",
                 dest_filename="troubleshooting_page",
                 prompt=JSON_PG_NUM_PROMPT,
@@ -621,5 +619,5 @@ class PdfManualParser:
                 dest_file_type="JSON",
                 expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
             )
-
+            pymupdf4llm.to_markdown(file_path_4, pages=[43, 45, *range(47, 48)])
             return est_troubleshooting_page_num
