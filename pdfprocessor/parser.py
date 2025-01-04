@@ -35,18 +35,39 @@ logger = logger_instance.get_logger()
 # Configure GEMINI
 genai.configure(api_key=os.environ["GEMINI_API_KEY"])
 
-# Create the model
-generation_config = {
-    "temperature": 1,
-    "top_p": 0.95,
-    "top_k": 40,
-    "max_output_tokens": 8192,
-    "response_mime_type": "application/json",
-}
 
-model = genai.GenerativeModel(
-    model_name="gemini-2.0-flash-exp",
-    generation_config=generation_config,
+# Create the model
+def create_model(model_name: str = "gemini-2.0-flash-exp", **kwargs):
+    """
+    Create a generative model using the specified model name and configuration.
+
+    Parameters
+    ----------
+    model_name : str
+        The name of the model to create.
+    kwargs : dict
+        Additional keyword arguments to configure the model.
+
+    Returns
+    -------
+    GenerativeModel
+        The created generative model.
+    """
+    generation_config = kwargs
+
+    model = genai.GenerativeModel(
+        model_name=model_name,
+        generation_config=generation_config,
+    )
+    return model
+
+
+gemini_model_2_0_flash_exp = create_model(
+    temperature=1,
+    top_p=0.95,
+    top_k=40,
+    max_output_tokens=8192,
+    response_mime_type="application/json",
 )
 
 EXPECTED_TOC_OUTPUT = """
@@ -89,14 +110,14 @@ def upload_to_gemini(path, mime_type=None):
 
 
 def extract_using_gemini(
-    file_uri, mime_type, prompt, dest_filename, **kwargs
+    src_file_uri, mime_type, prompt, dest_filename, **kwargs
 ) -> dict | None:
     """
     Extract details using GEMINI
 
     Parameters
     ----------
-    file_uri : str
+    src_file_uri : str
         The URI of the file to extract details from
     mime_type : str
         The MIME type of the file
@@ -117,10 +138,10 @@ def extract_using_gemini(
         if "parts" in kwargs:
             parts = kwargs["parts"]
         else:
-            file = upload_to_gemini(file_uri, mime_type=mime_type)
+            file = upload_to_gemini(src_file_uri, mime_type=mime_type)
             parts = [file, prompt.format(**kwargs)]
 
-        chat_session = model.start_chat(
+        chat_session = gemini_model_2_0_flash_exp.start_chat(
             history=[
                 {"role": "user", "parts": parts},
             ]
@@ -129,7 +150,7 @@ def extract_using_gemini(
         try:
             json_response = json.loads(response.text)
             save_dict_to_json(
-                json_response, Path(file_uri).parent / f"{dest_filename}.txt"
+                json_response, Path(src_file_uri).parent / f"{dest_filename}.txt"
             )
             return json_response
         except json.JSONDecodeError as e:
@@ -562,7 +583,7 @@ class PdfManualParser:
                 toc_mappings = {}
                 for _, uri in pages_uris:
                     toc_mapping = extract_using_gemini(
-                        file_uri=uri,
+                        src_file_uri=uri,
                         mime_type="image/png",
                         dest_filename="toc_mapping",
                         prompt=TOC_IMAGE_PROMPT,
@@ -605,11 +626,12 @@ class PdfManualParser:
         return None
 
     def estimate_troubleshooting_sections(self):
+        # needed to get the toc as json
         toc_details = self._extract_toc_from_img()
 
         if toc_details:
-            est_troubleshooting_page_num = extract_using_gemini(
-                file_uri=self.troubleshooting_path / "simplified_toc_mapping.txt",
+            est_troubleshooting_pages = extract_using_gemini(
+                src_file_uri=self.toc_path / "simplified_toc_mapping.txt",
                 mime_type="text/plain",
                 dest_filename="troubleshooting_page",
                 prompt=JSON_PG_NUM_PROMPT,
@@ -619,5 +641,4 @@ class PdfManualParser:
                 dest_file_type="JSON",
                 expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
             )
-            pymupdf4llm.to_markdown(file_path_4, pages=[43, 45, *range(47, 48)])
-            return est_troubleshooting_page_num
+            return est_troubleshooting_pages

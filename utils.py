@@ -91,6 +91,7 @@ class ScraperOption(Enum):
 class SourceTypeOption(Enum):
     IMAGE = "img"
     PDF = "pdf"
+    JSON = "json"
 
 
 class ExtractorOption(Enum):
@@ -99,28 +100,38 @@ class ExtractorOption(Enum):
     PYMUPDF = "pymupdf"
 
 
+class PageContentSearchType(Enum):
+    CONSECUTIVE_PAGES = "consecutive_pages"
+    EARLIEST_PAGE_FIRST = "earliest_page_first"
+
+
 TOC_IMAGE_PROMPT = """
-                    This is a table of contents image in a user manual for a {device}. Give me a Json of all sections and subsections with their page numbers.
-                    The result should be a key value pair with the section/subsection name as the key and page number as the value.
-                    The section names should all be in snakecase
-                    Make the section names all nakecase, page_numbers an integer, and make all section names lowercase, remove any encoding.
+            This {file_type} depicts the table of contents from a user manual for a {device}.
+            **Task:**
 
-                    Example:
-                    {
-                        "introduction": 1,
-                        "installation_of_parts": 3,
-                        "usage": 5,
-                        "maintenance": 7,
-                        "troubleshooting": 9,
-                    }
-                    “"""
+            Extract the section and subsection names, along with their corresponding page numbers, from the file.
+            Make sure the returned section names are in snakecase and all lowercase.
 
-TROUBLESHOOTING_PROMPT = """This a table of contents image in a user manual, I want you to extract the relevant sections and page numbers (key, value) in JSON that you think will be related to troubleshooting section from this image.
-                            The result should be a list of section names that you think are related to parts of the dishwasher.
-                            Make sure the section names are in snakecase and all lowercase."""
+            **Output Format:**
 
-PARTS_PROMPT = """This a table of contents image in a {device} user manual, I want you to extract the relevant sections you think that are related to where I might be able to find an image of parts for the Dishwasher.
-                    The result should be a list of section names that you think are related to parts of the dishwasher.
-                    Make the page_number an integer, and make all section names lowercase, remove any encoding.
+            Provide the results as a {dest_file_type} object with the following structure:
 
-                    Make sure the section names are in snakecase and all lowercase."""
+            ```json
+            {expected_output}
+            ```
+            """
+
+JSON_PG_NUM_PROMPT = """This a table of contents {file_type} file for a {device} user manual
+            **Task:**
+
+            Extract the relevant subsections you think that might help find details regarding {subject_of_interest} of this {device} from the file.
+            Make sure the returned subsection names are in snakecase and all lowercase.
+
+            **Output Format:**
+
+            Provide the results as a {dest_file_type} object with the following structure:
+
+            ```json
+            {expected_output}
+            ```
+            """
