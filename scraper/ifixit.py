@@ -1,6 +1,7 @@
 import datetime
 
 import requests
+from bs4 import BeautifulSoup
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.by import By
@@ -126,3 +127,49 @@ def save_appliance_categories(directory: str, appliance_type: str) -> str | None
             "appliance_brands",
         )
     return None
+
+
+class SiteScraper:
+    def __init__(self, site_name: str, site_url: str):
+        self.site_name = site_name
+        self.site_url = site_url
+
+    def extract_collection_from_html(
+        self,
+        raw_html: str,
+        class_name: str,
+        element_name: str | None = None,
+    ) -> list:
+        """
+        Extract the appliance brands from the raw HTML
+        """
+        soup = BeautifulSoup(raw_html, "html.parser")
+        subcategories_section = soup.find_all(element_name, class_=class_name)
+        return subcategories_section
+
+    def get_html_content(
+        self, scraper_option: ScraperOption | None = None
+    ) -> str | None:
+        """
+        Get the raw HTML from the URL
+
+        Parameters
+        ----------
+        scraper_option : ScraperOption (optional)
+            The option to use to get the HTML (default is ScraperOption.REQUESTS)
+
+        Returns
+        -------
+        str|None
+            Raw HTML from the URL or None if an error occurred
+        """
+        if scraper_option:
+            return get_html_content(self.site_url, option=scraper_option)
+        return get_html_content(self.site_url)
+
+    def get_toc_details(self, raw_html: str) -> list:
+        """
+        Get the table of contents details from the raw HTML
+        """
+        toc_details = self.extract_collection_from_html(raw_html, "toc", "div")
+        return toc_details
