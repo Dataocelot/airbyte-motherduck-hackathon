@@ -269,8 +269,8 @@ class PdfManualParser:
             self.document_mapping_path = output_path / "document_map"
             auto_create_dir(self.document_mapping_path)
 
-            self.troubleshooting_path = output_path / "troubleshooting"
-            auto_create_dir(self.troubleshooting_path)
+            self.parsed_sections_path = output_path / "sections"
+            auto_create_dir(self.parsed_sections_path)
 
             self.output_path = output_path
 
@@ -485,7 +485,7 @@ class PdfManualParser:
             return est_section_map
         return None
 
-    def extract_section(
+    def extract_section_content(
         self, section_name: str, page_start: int, page_end: int | None
     ) -> dict | None:
         """
@@ -502,7 +502,7 @@ class PdfManualParser:
 
         Returns
         -------
-        dict|None
+        dict | None
             A dictionary with the section name and the markdown content of the section, else None
         """
         if not page_end:
