@@ -81,7 +81,7 @@ EXPECTED_TOC_OUTPUT = """
             }
 """
 
-EXPECTED_TROBULESHOOTING_OUTPUT = "{subsection_name: [start_page_number, end_page_number], subsection_name2: [start_page_number, end_page_number]}"
+EXPECTED_SECTION_MAP_OUTPUT = "{subsection_name: [start_page_number, end_page_number], subsection_name2: [start_page_number, end_page_number]}"
 
 
 def upload_to_gemini(path, mime_type=None):
@@ -102,11 +102,11 @@ def upload_to_gemini(path, mime_type=None):
         return None
 
 
-def extract_using_gemini(
+def extract_doc_map_using_gemini(
     src_file_uri, mime_type, prompt, dest_filename, **kwargs
 ) -> dict | None:
     """
-    Extract details using GEMINI
+    Extract the document map using GEMINI
 
     Parameters
     ----------
@@ -267,8 +267,8 @@ class PdfManualParser:
                 / f"{self.filename}"
             )
 
-            self.toc_path = output_path / "toc"
-            auto_create_dir(self.toc_path)
+            self.document_mapping_path = output_path / "document_map"
+            auto_create_dir(self.document_mapping_path)
 
             self.troubleshooting_path = output_path / "troubleshooting"
             auto_create_dir(self.troubleshooting_path)
@@ -412,15 +412,15 @@ class PdfManualParser:
             logger.error(f"Error saving table of contents to image: {e}")
         return saved_paths
 
-    def _extract_toc_from_img(self) -> TocSection | None:
+    def _extract_toc_map_from_img(self) -> TocSection | None:
         if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
                 pages_uris = self.save_search_content_to_img(
-                    self.toc_path / "toc", search_content="contents"
+                    self.document_mapping_path / "toc_map", search_content="contents"
                 )
                 toc_mappings = {}
                 for _, uri in pages_uris:
-                    toc_mapping = extract_using_gemini(
+                    toc_mapping = extract_doc_map_using_gemini(
                         src_file_uri=uri,
                         mime_type="image/png",
                         dest_filename="toc_mapping",
@@ -451,7 +451,7 @@ class PdfManualParser:
                     )
                     save_dict_to_json(
                         simplified_toc_map,
-                        self.toc_path / "simplified_toc_mapping.txt",
+                        self.document_mapping_path / "simplified_toc_mapping.txt",
                     )
                     logger.info("Table of contents extracted")
                 return toc_details
@@ -463,23 +463,26 @@ class PdfManualParser:
             pass
         return None
 
-    def estimate_troubleshooting_sections(self):
+    def get_subject_of_interest_section_map(
+        self, subject_of_interest: str, dest_filename: str
+    ):
         # needed to get the toc as json
-        toc_details = self._extract_toc_from_img()
+        toc_details = self._extract_toc_map_from_img()
 
         if toc_details:
-            est_troubleshooting_pages = extract_using_gemini(
-                src_file_uri=self.toc_path / "simplified_toc_mapping.txt",
+            est_section_map = extract_doc_map_using_gemini(
+                src_file_uri=self.document_mapping_path / "simplified_toc_mapping.txt",
                 mime_type="text/plain",
-                dest_filename="troubleshooting_page",
+                dest_filename=dest_filename,
+                # dest_filename="troubleshooting_page",
                 prompt=JSON_PG_NUM_PROMPT,
                 file_type="json",
                 device=self.device,
-                subject_of_interest="troubleshooting",
+                subject_of_interest=subject_of_interest,
                 dest_file_type="JSON",
-                expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
+                expected_output=EXPECTED_SECTION_MAP_OUTPUT,
             )
-            return est_troubleshooting_pages
+            return est_section_map
         return None
 
     def extract_section(
@@ -500,7 +503,7 @@ class PdfManualParser:
         Returns
         -------
         dict
-            _description_
+            A dictionary with the section name and the markdown content of the section
         """
         if not end_page:
             end_page = len(self.document) - 1
