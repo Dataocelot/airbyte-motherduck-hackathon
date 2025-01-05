@@ -22,7 +22,6 @@
 
 - Use Gemini to start answering questions based on Parsed text [@cornzyblack]
 - Create UI for asking questions [@wayasay]
-- Load parsed data on S3 into data models on Motherduck using airbyte cloud [@cornzyblack]
 - Create Data model for Manual sections [@wayasay]
 - Create Data model for TOC section [@wayasay]
 
