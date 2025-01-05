@@ -485,6 +485,23 @@ class PdfManualParser:
     def extract_section(
         self, section_name: str, start_page: int, end_page: int | None
     ) -> dict:
+        """
+        Extracts a section given the page numbers and the section name
+
+        Parameters
+        ----------
+        section_name : str
+            The name of the section to extract
+        start_page : int
+            The starting page of the section
+        end_page : int | None
+            The ending page of the section
+
+        Returns
+        -------
+        dict
+            _description_
+        """
         if not end_page:
             end_page = len(self.document) - 1
         page_nums = range(start_page, end_page)
