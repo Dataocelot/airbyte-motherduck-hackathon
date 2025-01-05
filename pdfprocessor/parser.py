@@ -16,6 +16,7 @@ from utils import (
     PageContentSearchType,
     SourceTypeOption,
     auto_create_dir,
+    get_hash_from_file,
     save_dict_to_json,
 )
 
@@ -240,13 +241,17 @@ class PdfManualParser:
         pdf_path: str,
         device: str,
         toc_mapping_method: ExtractorOption,
+        model_number: str | None,
         output_path: str | Path | None = None,
     ):
         self.pdf_path = Path(pdf_path)
         self.filename = self.pdf_path.stem
         self.toc_mapping_method = toc_mapping_method
         self.document = pymupdf.open(self.pdf_path)
+        self.document_hash = get_hash_from_file(pdf_path)
+
         self.device = device
+        self.model_number = model_number
         self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
 
         if output_path:
@@ -475,3 +480,21 @@ class PdfManualParser:
                 expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
             )
             return est_troubleshooting_pages
+        return None
+
+    def extract_section(
+        self, section_name: str, start_page: int, end_page: int | None
+    ) -> dict:
+        if not end_page:
+            end_page = len(self.document) - 1
+        page_nums = range(start_page, end_page)
+        md_text = pymupdf4llm.to_markdown(self.document, pages=[*page_nums])
+        result = {
+            "brand": self.brand,
+            "section_name": section_name,
+            "markdown_text": md_text.encode(),
+            "document_hash": self.document_hash,
+            "model_number": self.model_number,
+            "device": self.device,
+        }
+        return result
