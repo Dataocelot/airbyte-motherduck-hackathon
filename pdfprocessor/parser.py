@@ -81,7 +81,7 @@ EXPECTED_TOC_OUTPUT = """
             }
 """
 
-EXPECTED_SECTION_MAP_OUTPUT = "{subsection_name: [start_page_number, end_page_number], subsection_name2: [start_page_number, end_page_number]}"
+EXPECTED_SECTION_MAP_OUTPUT = "{subsection_name: [page_start_number, end_page_number], subsection_name2: [page_start_number, end_page_number]}"
 
 
 def upload_to_gemini(path, mime_type=None):
@@ -253,7 +253,6 @@ class PdfManualParser:
         self.device = device
         self.model_number = model_number
         self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
-
         if output_path:
             self.output_path = output_path
         else:
@@ -449,6 +448,7 @@ class PdfManualParser:
                         toc_mapping=toc_mappings,
                         simplified_toc_mapping=simplified_toc_map,
                     )
+                    self.toc_details_dict = toc_details
                     save_dict_to_json(
                         simplified_toc_map,
                         self.document_mapping_path / "simplified_toc_mapping.txt",
@@ -466,15 +466,15 @@ class PdfManualParser:
     def get_subject_of_interest_section_map(
         self, subject_of_interest: str, dest_filename: str
     ):
-        # needed to get the toc as json
-        toc_details = self._extract_toc_map_from_img()
+        # Only run if the toc_details_dict is not yet available
+        if not hasattr(self, "toc_details_dict"):
+            self.toc_details = self._extract_toc_map_from_img()
 
-        if toc_details:
+        if self.toc_details:
             est_section_map = extract_doc_map_using_gemini(
                 src_file_uri=self.document_mapping_path / "simplified_toc_mapping.txt",
                 mime_type="text/plain",
                 dest_filename=dest_filename,
-                # dest_filename="troubleshooting_page",
                 prompt=JSON_PG_NUM_PROMPT,
                 file_type="json",
                 device=self.device,
@@ -486,8 +486,8 @@ class PdfManualParser:
         return None
 
     def extract_section(
-        self, section_name: str, start_page: int, end_page: int | None
-    ) -> dict:
+        self, section_name: str, page_start: int, page_end: int | None
+    ) -> dict | None:
         """
         Extracts a section given the page numbers and the section name
 
@@ -495,26 +495,33 @@ class PdfManualParser:
         ----------
         section_name : str
             The name of the section to extract
-        start_page : int
+        page_start : int
             The starting page of the section
-        end_page : int | None
+        page_end : int | None
             The ending page of the section
 
         Returns
         -------
-        dict
-            A dictionary with the section name and the markdown content of the section
+        dict|None
+            A dictionary with the section name and the markdown content of the section, else None
         """
-        if not end_page:
-            end_page = len(self.document) - 1
-        page_nums = range(start_page, end_page)
-        md_text = pymupdf4llm.to_markdown(self.document, pages=[*page_nums])
-        result = {
-            "brand": self.brand,
-            "section_name": section_name,
-            "markdown_text": md_text.encode(),
-            "document_hash": self.document_hash,
-            "model_number": self.model_number,
-            "device": self.device,
-        }
-        return result
+        if not page_end:
+            page_end = len(self.document) - 1
+        page_nums = range(page_start, page_end)
+        try:
+            md_text = pymupdf4llm.to_markdown(self.document, pages=[*page_nums])
+            result = {
+                "brand": self.brand,
+                "section_name": section_name,
+                "markdown_text": md_text.encode(),
+                "document_hash": self.document_hash,
+                "model_number": self.model_number,
+                "device": self.device,
+            }
+            logger.info(
+                f"Successfully extracted Markdown for {section_name}, {page_start} -> {page_end}"
+            )
+            return result
+        except Exception as markdownexception:
+            logger.error(f"Error getting Markdown for Document {markdownexception}")
+        return None
