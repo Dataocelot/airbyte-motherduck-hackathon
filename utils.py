@@ -4,10 +4,46 @@ import os
 from enum import Enum
 from pathlib import Path
 
+import boto3
+from dotenv import load_dotenv
+
 from logger import Logger
+
+load_dotenv()
 
 logger_instance = Logger()
 logger = logger_instance.get_logger()
+
+TOC_IMAGE_PROMPT = """
+            This {file_type} depicts the table of contents from a user manual for a {device}.
+            **Task:**
+
+            Extract the section and subsection names, along with their corresponding page numbers, from the file.
+            Make sure the returned section names are in snakecase and all lowercase.
+
+            **Output Format:**
+
+            Provide the results as a {dest_file_type} object with the following structure:
+
+            ```json
+            {expected_output}
+            ```
+            """
+
+JSON_PG_NUM_PROMPT = """This a table of contents {file_type} file for a {device} user manual
+            **Task:**
+
+            Extract the relevant subsections you think that might help find details regarding {subject_of_interest} of this {device} from the file.
+            Make sure the returned subsection names are in snakecase and all lowercase.
+
+            **Output Format:**
+
+            Provide the results as a {dest_file_type} object with the following structure:
+
+            ```json
+            {expected_output}
+            ```
+            """
 
 
 def auto_create_dir(directory: str | Path) -> None:
@@ -100,38 +136,92 @@ class ExtractorOption(Enum):
     PYMUPDF = "pymupdf"
 
 
+class WorkingEnvironment(Enum):
+    LOCAL = "local"
+    AWS = "aws"
+
+
+class ContentType(Enum):
+    JPEG = "image/jpeg"
+    JPG = "image/jpeg"
+    PNG = "image/png"
+    WEBP = "image/webp"
+    GIF = "image/gif"
+    SVG = "image/svg+xml"
+
+    TEXT = "text/plain"
+    HTML = "text/html"
+    CSS = "text/css"
+    JAVASCRIPT = "application/javascript"
+
+    PDF = "application/pdf"
+    JSON = "application/json"
+    XML = "application/xml"
+    CSV = "text/csv"
+
+    OCTET_STREAM = "application/octet-stream"
+
+
 class PageContentSearchType(Enum):
     CONSECUTIVE_PAGES = "consecutive_pages"
     EARLIEST_PAGE_FIRST = "earliest_page_first"
 
 
-TOC_IMAGE_PROMPT = """
-            This {file_type} depicts the table of contents from a user manual for a {device}.
-            **Task:**
+def save_file_to_s3(
+    data,
+    object_key: str,
+    content_type: ContentType | None = None,
+    bucket_name: None | str = os.getenv(
+        "BUCKET_NAME",
+    ),
+):
+    """Saves JSON data to an S3 bucket.
 
-            Extract the section and subsection names, along with their corresponding page numbers, from the file.
-            Make sure the returned section names are in snakecase and all lowercase.
+    Parameters:
+        data (bytes or str): The data to save.
+        object_key (str): The key (filename/path) for the object in S3. Can include folders (e.g., "my_folder/my_file.json").
+        content_type (ContentType, optional): The content type to save as, defaults as None
+        bucket_name (str, optional): The name of the S3 bucket. Defaults to the value of the `BUCKET_NAME` environment variable if not provided.
 
-            **Output Format:**
+    Returns:
+        bool: True if the data was successfully saved, False otherwise.
+    """
 
-            Provide the results as a {dest_file_type} object with the following structure:
+    try:
+        aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
+        aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
+        if not bucket_name:
+            logger.error("Incorrect bucket name, it is empty")
+            return False
 
-            ```json
-            {expected_output}
-            ```
-            """
+        if aws_access_key_id and aws_secret_access_key:
+            try:
+                s3 = boto3.client(
+                    "s3",
+                    aws_access_key_id=aws_access_key_id,
+                    aws_secret_access_key=aws_secret_access_key,
+                )
+            except Exception as e:
+                logger.error(f"AWS Error: {e}")
 
-JSON_PG_NUM_PROMPT = """This a table of contents {file_type} file for a {device} user manual
-            **Task:**
+        else:
+            logger.error(
+                "CredentialsError: AWS credentials not found in environment, .env file, or AWS config"
+            )
+            return False
 
-            Extract the relevant subsections you think that might help find details regarding {subject_of_interest} of this {device} from the file.
-            Make sure the returned subsection names are in snakecase and all lowercase.
+        try:
+            s3.put_object(
+                Bucket=bucket_name,
+                Key=object_key,
+                Body=data,
+                ContentType=content_type.value if content_type else content_type,
+            )
+        except Exception as e:
+            logger.error(f"AWS Error: {e}")
 
-            **Output Format:**
+        return True
 
-            Provide the results as a {dest_file_type} object with the following structure:
-
-            ```json
-            {expected_output}
-            ```
-            """
+    except Exception as e:
+        logger.error(f"Error saving JSON to S3: {e}")
+        return False
