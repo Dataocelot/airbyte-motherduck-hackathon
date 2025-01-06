@@ -1,11 +1,15 @@
 import hashlib
 import json
 import os
+import tempfile
 from enum import Enum
 from pathlib import Path
+from typing import BinaryIO
 
 import boto3
+from botocore.exceptions import ClientError
 from dotenv import load_dotenv
+from mypy_boto3_s3.client import S3Client
 
 from logger import Logger
 
@@ -136,7 +140,7 @@ class ExtractorOption(Enum):
     PYMUPDF = "pymupdf"
 
 
-class WorkingEnvironment(Enum):
+class Environment(Enum):
     LOCAL = "local"
     AWS = "aws"
 
@@ -167,61 +171,136 @@ class PageContentSearchType(Enum):
     EARLIEST_PAGE_FIRST = "earliest_page_first"
 
 
-def save_file_to_s3(
-    data,
-    object_key: str,
-    content_type: ContentType | None = None,
-    bucket_name: None | str = os.getenv(
-        "BUCKET_NAME",
-    ),
-):
-    """Saves JSON data to an S3 bucket.
+def get_s3_client(bucket_name: str | None) -> S3Client | None:
+    """Retrieves an S3 client.
 
-    Parameters:
-        data (bytes or str): The data to save.
-        object_key (str): The key (filename/path) for the object in S3. Can include folders (e.g., "my_folder/my_file.json").
-        content_type (ContentType, optional): The content type to save as, defaults as None
-        bucket_name (str, optional): The name of the S3 bucket. Defaults to the value of the `BUCKET_NAME` environment variable if not provided.
+    Args:
+        bucket_name (str, optional): The name of the S3 bucket.
 
     Returns:
-        bool: True if the data was successfully saved, False otherwise.
+        S3Client | None: An S3 client object if successful, None otherwise.
+        Raises ValueError if bucket_name is None or empty
     """
+    if not bucket_name:
+        logger.error("Bucket name cannot be empty.")
+        raise ValueError("Bucket name is required.")
 
     try:
         aws_access_key_id = os.getenv("AWS_ACCESS_KEY_ID")
         aws_secret_access_key = os.getenv("AWS_SECRET_ACCESS_KEY")
-        if not bucket_name:
-            logger.error("Incorrect bucket name, it is empty")
-            return False
 
         if aws_access_key_id and aws_secret_access_key:
-            try:
-                s3 = boto3.client(
-                    "s3",
-                    aws_access_key_id=aws_access_key_id,
-                    aws_secret_access_key=aws_secret_access_key,
-                )
-            except Exception as e:
-                logger.error(f"AWS Error: {e}")
-
-        else:
-            logger.error(
-                "CredentialsError: AWS credentials not found in environment, .env file, or AWS config"
+            s3_client = boto3.client(
+                "s3",
+                aws_access_key_id=aws_access_key_id,
+                aws_secret_access_key=aws_secret_access_key,
             )
+        else:
+            s3_client = boto3.client("s3")
+        return s3_client
+    except ClientError as e:
+        logger.error(f"AWS ClientError: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred during S3 client creation. {e}")
+        return None
+
+
+def save_file_to_s3(
+    data: bytes | str | BinaryIO,
+    object_key: str | Path,
+    content_type: str | None = None,
+    bucket_name: str | None = os.getenv("BUCKET_NAME"),
+) -> bool:
+    """Saves data to an S3 bucket.
+
+    Parameters:
+        data (bytes, str, or BinaryIO): The data to save. Can be bytes (for images, etc.), a string, or a file-like object.
+        object_key (str): The key (filename/path) for the object in S3. Can include folders (e.g., "my_folder/my_file.json").
+        content_type (str, optional): The content type to save as. If None, S3 will attempt to determine it automatically (less reliable).
+        bucket_name (str, optional): The name of the S3 bucket. Defaults to the value of the `BUCKET_NAME` environment variable if not provided.
+
+    Returns:
+        bool: True if the data was successfully saved, False otherwise.
+    Raises:
+        ValueError: If the bucket name is not provided or is empty.
+    """
+    if not bucket_name:
+        logger.error("Bucket name cannot be empty.")
+        raise ValueError("Bucket name is required.")
+
+    try:
+        s3_client = get_s3_client(bucket_name)
+        if s3_client is None:
+            logger.error("Failed to create S3 client.")
             return False
 
         try:
-            s3.put_object(
-                Bucket=bucket_name,
-                Key=object_key,
-                Body=data,
-                ContentType=content_type.value if content_type else content_type,
-            )
-        except Exception as e:
-            logger.error(f"AWS Error: {e}")
-
-        return True
-
-    except Exception as e:
-        logger.error(f"Error saving JSON to S3: {e}")
+            if content_type:
+                s3_client.put_object(
+                    Bucket=bucket_name,
+                    Key=str(object_key),
+                    Body=data,
+                    ContentType=content_type,
+                )
+            else:
+                s3_client.put_object(Bucket=bucket_name, Key=str(object_key), Body=data)
+            logger.info(f"File saved to s3://{bucket_name}/{object_key}")
+            return True
+        except ClientError as e:
+            logger.error(f"AWS ClientError: {e}")
+            return False
+    except ValueError as e:
+        logger.error(f"Invalid input: {e}")
         return False
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred: {e}")
+        return False
+
+
+def get_object_from_s3(
+    object_key: str,
+    bucket_name: str | None = os.getenv("BUCKET_NAME"),
+) -> str | None:
+    """Retrieves an object from an S3 bucket and saves it to a temporary file.
+
+    Parameters:
+        object_key (str): The key (filename/path) of the object in S3.
+        bucket_name (str, optional): The name of the S3 bucket. Defaults to the value of the BUCKET_NAME environment variable if not provided.
+
+    Returns:
+        str | None: The path to the temporary file containing the object's content, or None if an error occurs.
+    Raises:
+        ValueError: if the bucket name is not provided
+    """
+
+    if not bucket_name:
+        logger.error("Bucket name cannot be empty.")
+        raise ValueError("Bucket name is required.")
+
+    try:
+        s3_client = get_s3_client(bucket_name)
+        if s3_client is None:
+            logger.error("Failed to create S3 client.")
+            return None
+
+        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+            temp_file_path = tmp_file.name
+            logger.info(
+                f"Object key {object_key}",
+            )
+            s3_client.download_file(bucket_name, str(object_key), temp_file_path)
+            logger.info(
+                f"File s3://{bucket_name}/{object_key} saved to {temp_file_path}"
+            )
+            return temp_file_path
+
+    except ClientError as e:
+        if e.response["Error"]["Code"] == "NoSuchKey":
+            logger.error(f"Object '{object_key}' not found in bucket '{bucket_name}'.")
+        else:
+            logger.error(f"AWS ClientError: {e}")
+        return None
+    except Exception as e:
+        logger.exception(f"An unexpected error occurred: {e}")
+        return None
