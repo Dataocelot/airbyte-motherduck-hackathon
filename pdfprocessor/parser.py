@@ -1,6 +1,6 @@
-import datetime
 import json
 import os
+import tempfile
 from pathlib import Path
 
 import google.generativeai as genai
@@ -11,12 +11,16 @@ from pymupdf import Document
 from utils import (
     JSON_PG_NUM_PROMPT,
     TOC_IMAGE_PROMPT,
+    Environment,
     ExtractorOption,
     Logger,
     PageContentSearchType,
     SourceTypeOption,
     auto_create_dir,
+    get_hash_from_file,
+    get_object_from_s3,
     save_dict_to_json,
+    save_file_to_s3,
 )
 
 # Initialize logger
@@ -80,7 +84,7 @@ EXPECTED_TOC_OUTPUT = """
             }
 """
 
-EXPECTED_TROBULESHOOTING_OUTPUT = "{subsection_name: [start_page_number, end_page_number], subsection_name2: [start_page_number, end_page_number]}"
+EXPECTED_SECTION_MAP_OUTPUT = "{subsection_name: [page_start_number, end_page_number], subsection_name2: [page_start_number, end_page_number]}"
 
 
 def upload_to_gemini(path, mime_type=None):
@@ -101,15 +105,20 @@ def upload_to_gemini(path, mime_type=None):
         return None
 
 
-def extract_using_gemini(
-    src_file_uri, mime_type, prompt, dest_filename, **kwargs
+def extract_doc_map_using_gemini(
+    src_filepath,
+    mime_type,
+    prompt,
+    dest_filename,
+    environment: Environment = Environment.LOCAL,
+    **kwargs,
 ) -> dict | None:
     """
-    Extract details using GEMINI
+    Extract the document map using GEMINI
 
     Parameters
     ----------
-    src_file_uri : str
+    src_filepath : str
         The URI of the file to extract details from
     mime_type : str
         The MIME type of the file
@@ -117,6 +126,8 @@ def extract_using_gemini(
         The prompt to use to extract details
     dest_filename : str
         The name of the file to save the extracted details to
+    environment : Environment
+        The Environment, local or AWS, default is Local
     kwargs : dict
         Optional keyword arguments to format the prompt
 
@@ -126,12 +137,19 @@ def extract_using_gemini(
         The extracted details or None if an error occurred
     """
 
+    file = src_filepath
     try:
         if "parts" in kwargs:
             parts = kwargs["parts"]
         else:
-            file = upload_to_gemini(src_file_uri, mime_type=mime_type)
-            parts = [file, prompt.format(**kwargs)]
+            if environment == environment.AWS:
+                file = get_object_from_s3(src_filepath)
+                logger.info(
+                    f"Retrieved this file {src_filepath} from S3 and saved here {file}"
+                )
+
+        uploaded_file = upload_to_gemini(file, mime_type=mime_type)
+        parts = [uploaded_file, prompt.format(**kwargs)]
 
         chat_session = gemini_model_2_0_flash_exp.start_chat(
             history=[
@@ -141,16 +159,15 @@ def extract_using_gemini(
         response = chat_session.send_message("pathob\n")
         try:
             json_response = json.loads(response.text)
-            save_dict_to_json(
-                json_response, Path(src_file_uri).parent / f"{dest_filename}.txt"
-            )
+            save_dict_to_json(json_response, Path(file).parent / f"{dest_filename}.txt")
             return json_response
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode JSON response: {e}")
             return None
     except Exception as e:
         logger.error(f"Error extracting details using GEMINI: {e}")
-        return None
+
+    return None
 
 
 class ManualSection:
@@ -240,35 +257,45 @@ class PdfManualParser:
         pdf_path: str,
         device: str,
         toc_mapping_method: ExtractorOption,
+        model_number: str | None,
         output_path: str | Path | None = None,
+        environment: Environment = Environment.LOCAL,
     ):
         self.pdf_path = Path(pdf_path)
         self.filename = self.pdf_path.stem
         self.toc_mapping_method = toc_mapping_method
+        self.environment = environment
         self.document = pymupdf.open(self.pdf_path)
+        self.document_hash = get_hash_from_file(pdf_path)
         self.device = device
+        self.model_number = model_number
         self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
-
         if output_path:
             self.output_path = output_path
         else:
+            if environment == Environment.LOCAL:
+                self.root_dir = Path(self.root_data_dir)
+            if environment == Environment.AWS:
+                self.temp_file_dir = tempfile.TemporaryDirectory()
+                self.root_dir = Path(self.temp_file_dir.name)
 
-            date = datetime.datetime.now().strftime("%Y-%m-%d")
-            output_path = (
-                Path(self.root_data_dir)
-                / "output"
+            self.relative_dir = (
+                Path("output")
                 / f"brand={self.brand}"
-                / f"date={date}"
-                / f"{self.filename}"
+                / f"model_number={self.model_number}"
             )
 
-            self.toc_path = output_path / "toc"
-            auto_create_dir(self.toc_path)
+            self.output_path = self.root_dir / self.relative_dir
 
-            self.troubleshooting_path = output_path / "troubleshooting"
-            auto_create_dir(self.troubleshooting_path)
+            self.document_mapping_path = Path("document_map")
+            self.parsed_sections_path = Path("sections")
 
-            self.output_path = output_path
+            auto_create_dir(self.output_path / self.document_mapping_path)
+            auto_create_dir(self.output_path / self.parsed_sections_path)
+
+            logger.info(
+                f"Output path: {self.output_path}, root_dir: {self.root_dir}, Environment {environment}"
+            )
 
     def _extract_to_markdown(self, document: Document) -> str:
         """
@@ -371,7 +398,7 @@ class PdfManualParser:
 
         if pg_no_matches:
             logger.info(
-                f"The search content with {search_content} most likely on page {pg_no_matches}"
+                f"I searched and found `{search_content}` most likely on page {pg_no_matches}"
             )
             pages = [self.document[page_no] for page_no in pg_no_matches]
             return pages
@@ -396,42 +423,77 @@ class PdfManualParser:
             self.matched_pages = self._get_pages_with_content(
                 search_content=search_content, pages_to_search=pages_to_search
             )
+            filepath = Path(filepath)
             if self.matched_pages:
                 for matched_page in self.matched_pages:
                     pix = matched_page.get_pixmap()
-                    save_to_path = f"{filepath}_{matched_page.number}.png"
-                    pix.save(save_to_path)
+
+                    if self.environment == Environment.AWS:
+                        save_to_path = f"{self.relative_dir}/{filepath.name}_{matched_page.number}.png"
+                        save_file_to_s3(
+                            pix.pil_tobytes(format="PNG"),
+                            save_to_path,
+                            content_type="image/png",
+                        )
+                        logger.info(
+                            f"Saved Searched contents Image result to the S3 Bucket: {save_to_path}"
+                        )
+                    elif self.environment == Environment.LOCAL:
+                        save_to_path = f"{filepath}_{matched_page.number}.png"
+                        pix.save(save_to_path)
                     saved_paths.append((matched_page, save_to_path))
-                    logger.info(save_to_path)
         except Exception as e:
-            logger.error(f"Error saving table of contents to image: {e}")
+            logger.error(f"Error Searched contents as an image: {e}")
         return saved_paths
 
-    def _extract_toc_from_img(self) -> TocSection | None:
+    def _extract_toc_map_from_img(self) -> TocSection | None:
         if self.toc_mapping_method == ExtractorOption.GEMINI:
             try:
+                if self.environment == Environment.LOCAL:
+                    base_path = self.output_path / self.document_mapping_path
+                elif self.environment == Environment.AWS:
+                    base_path = self.output_path / self.document_mapping_path
                 pages_uris = self.save_search_content_to_img(
-                    self.toc_path / "toc", search_content="contents"
+                    base_path / "toc_map",
+                    search_content="contents",
                 )
                 toc_mappings = {}
                 for _, uri in pages_uris:
-                    toc_mapping = extract_using_gemini(
-                        src_file_uri=uri,
+                    toc_mapping = extract_doc_map_using_gemini(
+                        src_filepath=uri,
                         mime_type="image/png",
                         dest_filename="toc_mapping",
                         prompt=TOC_IMAGE_PROMPT,
                         file_type="image",
                         device=self.device,
                         dest_file_type="JSON",
+                        environment=self.environment,
                         expected_output=EXPECTED_TOC_OUTPUT,
                     )
                     if toc_mapping:
                         toc_mappings.update(toc_mapping)
 
                 if toc_mappings:
+                    toc_json_string = json.dumps(toc_mappings)
+                    toc_json_bytes = toc_json_string.encode("utf-8")
+                    save_dict_to_json(
+                        toc_mappings,
+                        self.output_path
+                        / self.document_mapping_path
+                        / "toc_mapping.txt",
+                    )
+                    save_file_to_s3(
+                        toc_json_bytes,
+                        self.relative_dir
+                        / self.document_mapping_path
+                        / "toc_mapping.txt",
+                    )
+                    logger.info("Saving Table of contents to S3")
+
                     page_start = pages_uris[0][0]
                     page_end = pages_uris[-1][0]
                     simplified_toc_map = self.extract_all_subsections(toc_mappings)
+
                     toc_details = TocSection(
                         title="TOC",
                         page_uris=pages_uris,
@@ -444,11 +506,28 @@ class PdfManualParser:
                         toc_mapping=toc_mappings,
                         simplified_toc_mapping=simplified_toc_map,
                     )
+                    self.toc_details_dict = toc_details
+
                     save_dict_to_json(
                         simplified_toc_map,
-                        self.toc_path / "simplified_toc_mapping.txt",
+                        self.output_path
+                        / self.document_mapping_path
+                        / "simplified_toc_mapping.txt",
                     )
-                    logger.info("Table of contents extracted")
+                    if self.environment == Environment.AWS:
+                        # Convert the dictionary to a JSON string
+                        json_string = json.dumps(simplified_toc_map)
+                        json_bytes = json_string.encode("utf-8")
+                        logger.info("Saving Simplified Table of contents to S3")
+
+                        save_file_to_s3(
+                            json_bytes,
+                            self.relative_dir
+                            / self.document_mapping_path
+                            / "simplified_toc_mapping.txt",
+                        )
+                    logger.info("Table of contents extracted and Saved")
+
                 return toc_details
             except Exception as e:
                 logger.error(f"Error extracting TOC using GEMINI: {e}")
@@ -458,20 +537,96 @@ class PdfManualParser:
             pass
         return None
 
-    def estimate_troubleshooting_sections(self):
-        # needed to get the toc as json
-        toc_details = self._extract_toc_from_img()
+    def get_subject_of_interest_section_map(
+        self, subject_of_interest: str, dest_filename: str
+    ):
+        if not hasattr(self, "toc_details_dict"):
+            self.toc_details = self._extract_toc_map_from_img()
 
-        if toc_details:
-            est_troubleshooting_pages = extract_using_gemini(
-                src_file_uri=self.toc_path / "simplified_toc_mapping.txt",
+        if self.toc_details:
+            # fmt: off
+            toc_simplified_mapping_path = self.document_mapping_path / "simplified_toc_mapping.txt"
+            # fmt: on
+
+            if self.environment == Environment.LOCAL:
+                src_filepath = self.output_path / toc_simplified_mapping_path
+            elif self.environment == Environment.AWS:
+                src_filepath = self.relative_dir / toc_simplified_mapping_path
+
+            est_section_map = extract_doc_map_using_gemini(
+                src_filepath=src_filepath,
                 mime_type="text/plain",
-                dest_filename="troubleshooting_page",
+                dest_filename=dest_filename,
                 prompt=JSON_PG_NUM_PROMPT,
                 file_type="json",
                 device=self.device,
-                subject_of_interest="troubleshooting",
+                subject_of_interest=subject_of_interest,
                 dest_file_type="JSON",
-                expected_output=EXPECTED_TROBULESHOOTING_OUTPUT,
+                environment=self.environment,
+                expected_output=EXPECTED_SECTION_MAP_OUTPUT,
             )
-            return est_troubleshooting_pages
+            return est_section_map
+        return None
+
+    def extract_section_content(
+        self, section_name: str, page_start: int, page_end: int | None
+    ) -> dict | None:
+        """
+        Extracts a section given the page numbers and the section name
+
+        Parameters
+        ----------
+        section_name : str
+            The name of the section to extract
+        page_start : int
+            The starting page of the section
+        page_end : int | None
+            The ending page of the section
+
+        Returns
+        -------
+        dict | None
+            A dictionary with the section name and the markdown content of the section, else None
+        """
+        if not page_end:
+            page_end = len(self.document) - 1
+        page_nums = range(page_start, page_end)
+        try:
+            md_text = pymupdf4llm.to_markdown(self.document, pages=[*page_nums])
+            result = {
+                "brand": self.brand,
+                "section_name": section_name,
+                "markdown_text": md_text,
+                "document_hash": self.document_hash,
+                "model_number": self.model_number,
+                "device": self.device,
+            }
+            logger.info(
+                f"Successfully extracted Markdown for {section_name}, {page_start} -> {page_end}"
+            )
+            return result
+        except Exception as markdownexception:
+            logger.error(f"Error getting Markdown for Document {markdownexception}")
+        return None
+
+    def extract_all_sections_content(self) -> list:
+        result = []
+        if not hasattr(self, "toc_details_dict"):
+            self.toc_details = self._extract_toc_map_from_img()
+        if self.toc_details_dict:
+            for (
+                section_name,
+                page_span,
+            ) in self.toc_details_dict.simplified_toc_mapping.items():
+                result.append(self.extract_section_content(section_name, *page_span))
+            logger.info("Extracted all contents found in the Table of contents")
+        return result
+
+    def cleanup(self):
+        try:
+            if self.environment == Environment.AWS:
+                self.temp_file_dir.cleanup()
+            else:
+                os.remove(self.root_data_dir)
+        except Exception as e:
+            logger.error(f"Issue cleaning up files {e}")
