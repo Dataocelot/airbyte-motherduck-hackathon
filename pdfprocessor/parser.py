@@ -1,4 +1,3 @@
-import datetime
 import json
 import os
 from pathlib import Path
@@ -11,13 +10,16 @@ from pymupdf import Document
 from utils import (
     JSON_PG_NUM_PROMPT,
     TOC_IMAGE_PROMPT,
+    ContentType,
     ExtractorOption,
     Logger,
     PageContentSearchType,
     SourceTypeOption,
+    WorkingEnvironment,
     auto_create_dir,
     get_hash_from_file,
     save_dict_to_json,
+    save_file_to_s3,
 )
 
 # Initialize logger
@@ -243,34 +245,39 @@ class PdfManualParser:
         toc_mapping_method: ExtractorOption,
         model_number: str | None,
         output_path: str | Path | None = None,
+        working_environment: WorkingEnvironment = WorkingEnvironment.LOCAL,
     ):
         self.pdf_path = Path(pdf_path)
         self.filename = self.pdf_path.stem
         self.toc_mapping_method = toc_mapping_method
+        self.working_environment = working_environment
         self.document = pymupdf.open(self.pdf_path)
         self.document_hash = get_hash_from_file(pdf_path)
-
         self.device = device
         self.model_number = model_number
         self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
         if output_path:
             self.output_path = output_path
         else:
+            environment_paths = {
+                WorkingEnvironment.LOCAL: Path(self.root_data_dir),
+                WorkingEnvironment.AWS: Path(""),
+            }
+            root_dir = environment_paths[working_environment]
 
-            date = datetime.datetime.now().strftime("%Y-%m-%d")
             output_path = (
-                Path(self.root_data_dir)
+                root_dir
                 / "output"
                 / f"brand={self.brand}"
-                / f"date={date}"
-                / f"{self.filename}"
+                / f"model_number={self.model_number}"
             )
 
-            self.document_mapping_path = output_path / "document_map"
-            auto_create_dir(self.document_mapping_path)
+            if working_environment == WorkingEnvironment.LOCAL:
+                self.document_mapping_path = output_path / "document_map"
+                auto_create_dir(self.document_mapping_path)
 
-            self.parsed_sections_path = output_path / "sections"
-            auto_create_dir(self.parsed_sections_path)
+                self.parsed_sections_path = output_path / "sections"
+                auto_create_dir(self.parsed_sections_path)
 
             self.output_path = output_path
 
@@ -403,12 +410,27 @@ class PdfManualParser:
             if self.matched_pages:
                 for matched_page in self.matched_pages:
                     pix = matched_page.get_pixmap()
-                    save_to_path = f"{filepath}_{matched_page.number}.png"
-                    pix.save(save_to_path)
+                    if WorkingEnvironment.LOCAL:
+                        save_to_path = f"{filepath}_{matched_page.number}.png"
+                        pix.save(save_to_path)
+                        logger.info(
+                            f"Saved Searched contents result locally to {save_to_path}"
+                        )
+
+                    elif WorkingEnvironment.AWS:
+                        save_to_path = f"{filepath}_{matched_page.number}.png"
+                        save_file_to_s3(
+                            pix.pil_tobytes(),
+                            save_to_path,
+                            content_type=ContentType.PNG,
+                        )
+                        logger.info(
+                            f"Saved Searched contents result to AWS Bucket at {save_to_path}"
+                        )
+
                     saved_paths.append((matched_page, save_to_path))
-                    logger.info(save_to_path)
         except Exception as e:
-            logger.error(f"Error saving table of contents to image: {e}")
+            logger.error(f"Error Searched contents as an image: {e}")
         return saved_paths
 
     def _extract_toc_map_from_img(self) -> TocSection | None:
@@ -466,7 +488,6 @@ class PdfManualParser:
     def get_subject_of_interest_section_map(
         self, subject_of_interest: str, dest_filename: str
     ):
-        # Only run if the toc_details_dict is not yet available
         if not hasattr(self, "toc_details_dict"):
             self.toc_details = self._extract_toc_map_from_img()
 
@@ -513,7 +534,7 @@ class PdfManualParser:
             result = {
                 "brand": self.brand,
                 "section_name": section_name,
-                "markdown_text": md_text.encode(),
+                "markdown_text": md_text,
                 "document_hash": self.document_hash,
                 "model_number": self.model_number,
                 "device": self.device,
@@ -525,3 +546,16 @@ class PdfManualParser:
         except Exception as markdownexception:
             logger.error(f"Error getting Markdown for Document {markdownexception}")
         return None
+
+    def extract_all_sections_content(self) -> list:
+        result = []
+        if not hasattr(self, "toc_details_dict"):
+            self.toc_details = self._extract_toc_map_from_img()
+        if self.toc_details_dict:
+            for (
+                section_name,
+                page_span,
+            ) in self.toc_details_dict.simplified_toc_mapping.items():
+                result.append(self.extract_section_content(section_name, *page_span))
+            logger.info("Extracted all contents found in the Table of contents")
+        return result
