@@ -6,11 +6,11 @@
 
 - Create functionality to extract Table of contents from PDF [@cornzyblack]
 - Restructure respective folders for parsed mardkown and images [@cornzyblack]
+- Create UI for uploading files User manuals to S3 using Streamlit (admin portal) [@wayasay]
+- Create PdfParser logic for extracting Troubleshooting section [@cornzyblack]
 
 #### In progress
 
-- Create PdfParser logic for extracting Troubleshooting section [@cornzyblack]
-- Create UI for uploading files User manuals to S3 using Streamlit (admin portal) [@wayasay]
 - Load parsed data on S3 into data models on Motherduck using airbyte cloud [@cornzyblack]
 
 #### Bugs
@@ -34,6 +34,7 @@
 - Write + Add python tests [@cornzyblack]
 - Setup Github actions CI/CD for python tests [@wayasay]
 - Automatically set up
+- Refine exceptions
 
 #### Enhancement
 
@@ -45,3 +46,4 @@
 - Scanning Table of content by image with PYUMDF not yet done
 - Deploy pdfprocessor to Lambda [AWS Lambda Documentation](https://docs.aws.amazon.com/lambda/latest/dg/python-image.html) (Docker)
 - Deploy infrastructure with Terraform
+- Decide if to use Etag when making uploads to files instead of using the get_hash_from_file for AWS uploads
