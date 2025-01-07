@@ -24,11 +24,10 @@ def upload_to_s3(file, bucket_name, brand, object_name=None):
         st.error(f"Error uploading file: {e}")
 
 
-if __name__ == "__main__":
-    st.set_page_config(
-        page_title="WeFixDishwashers 🛠️🧽", page_icon=":dishwasher:", layout="wide"
-    )
-
+def app():
+    # st.set_page_config(
+    #     page_title="WeFixDishwashers 🛠️🧽", page_icon=":dishwasher:", layout="wide"
+    # )
     # Container for main content
     with st.container():
         st.title("Welcome to WeFixDishwashers 🛠️🧽 User Manual Upload")
