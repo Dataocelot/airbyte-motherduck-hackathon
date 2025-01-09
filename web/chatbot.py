@@ -1,9 +1,35 @@
 import datetime
 import os
+import sys
 
 import boto3
+import duckdb
 import streamlit as st
+from dotenv import load_dotenv
 from google import genai
+
+# Add project root to sys.path
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from helper.utils import save_dict_to_json
+
+load_dotenv()
+
+MOTHERDUCK_TOKEN = os.environ["MOTHERDUCK_API_KEY"]
+DB_NAME = os.getenv("DB_NAME")
+con = duckdb.connect(f"md:my_db?motherduck_token={MOTHERDUCK_TOKEN}")
+
+
+# List all connected databases
+res = con.sql(
+    """
+        SELECT markdown_text
+        FROM manual_sections
+        WHERE model_number='DF243'
+        AND section_name='cleaning_and_caring'
+        """
+)
+extra_information = res.fetchall()[0][0]
 
 model_name: str = "gemini-2.0-flash-exp"
 
@@ -104,9 +130,14 @@ def app():
                 f"""Task:
                 You are friendly chatbot, working for a dishwasher service company
                 **Task:**
-                Act like a conversational human, don't be too verbose but still answer the User's question here:
+                Act like a conversational human, don't be too verbose but still answer the
+                User's question with the Extra information I provide:
 
+                **User question**
                 {user_question}
+
+                **Extra information**
+                {extra_information}
                 """,
                 model_name,
             ):
@@ -131,4 +162,5 @@ def app():
                 "gemini_response_time": (end_time - start_time).total_seconds(),
             },
         }
+        save_dict_to_json(chat_log, "data/chatbot_responses/response.json")
         # save_chat_log(chat_log)
