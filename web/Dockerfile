@@ -12,6 +12,9 @@ RUN pip3 --no-cache-dir -r requirements.txt
 # Set AWS secrets from host
 RUN --mount=type=secret,id=aws,target=/root/.aws/credentials
 
+# Create a volume for storing data
+VOLUME ["/app/data"]
+
 EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/_stcore/health
