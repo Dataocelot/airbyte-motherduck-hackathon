@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -8,7 +9,9 @@ import pymupdf
 import pymupdf4llm
 from pymupdf import Document
 
-from utils import (
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from helper.utils import (
     JSON_PG_NUM_PROMPT,
     TOC_IMAGE_PROMPT,
     Environment,
@@ -258,6 +261,7 @@ class PdfManualParser:
         device: str,
         toc_mapping_method: ExtractorOption,
         model_number: str | None,
+        brand: str,
         output_path: str | Path | None = None,
         environment: Environment = Environment.LOCAL,
     ):
@@ -268,8 +272,9 @@ class PdfManualParser:
         self.document = pymupdf.open(self.pdf_path)
         self.document_hash = get_hash_from_file(pdf_path)
         self.device = device
+        self.brand = brand
         self.model_number = model_number
-        self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
+        self.root_data_dir, _, _, _ = Path(self.pdf_path).parts
         if output_path:
             self.output_path = output_path
         else:
