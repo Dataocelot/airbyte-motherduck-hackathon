@@ -11,7 +11,7 @@ model_name: str = "gemini-2.0-flash-exp"
 try:
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
 except KeyError:
-    st.error("Please set the GOOGLE_API_KEY environment variable.")
+    st.error("Please set the GEMINI_API_KEY environment variable.")
     st.stop()  # Stop execution if the API key is not set
 
 
