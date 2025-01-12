@@ -515,7 +515,6 @@ class PdfManualParser:
                         toc_mapping=toc_mappings,
                         simplified_toc_mapping=simplified_toc_map,
                     )
-                    self.toc_details_dict = toc_details
                     if self.environment == Environment.LOCAL:
                         save_dict_to_json(
                             simplified_toc_map,
