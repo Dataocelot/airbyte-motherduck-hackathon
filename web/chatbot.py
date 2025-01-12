@@ -3,8 +3,10 @@ import os
 
 import boto3
 import streamlit as st
+from dotenv import load_dotenv
 from google import genai
 
+load_dotenv()
 model_name: str = "gemini-2.0-flash-exp"
 
 # Initialize the Gemini client (do this outside the function for efficiency)
