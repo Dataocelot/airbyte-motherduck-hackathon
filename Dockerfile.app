@@ -1,14 +1,13 @@
-# Use python 3.11 base Image
-FROM python:3.11-slim
+FROM python:3.11-slim-buster
 
 WORKDIR /app
 
-COPY ./web  .env /app/web/
+COPY ./web/requirements.txt ./.env ./
+RUN pip install --cache-dir .cache/pip -r requirements.txt
 
-RUN pip3 install --no-cache-dir -r web/requirements.txt
+COPY ./web /app/web
+COPY ./helper /app/helper/
 
-# Set AWS secrets from host
-RUN --mount=type=secret,id=aws,target=/root/.aws/credentials
 
 # Create a volume for storing data parsed data
 VOLUME ["/app/data"]
