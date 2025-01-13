@@ -35,14 +35,14 @@ DB_NAME= #Your DB name in Motherduck
 AIRTABLE_ACCESS_TOKEN= #Your Airtable access token
 ENVIRONMENT=LOCAL #Default is LOCAL or it can be AWS
 AIRTABLE_BASE= #Your Airtable Base
-AWS_ACCESS_KEY_ID=
-AWS_SECRET_ACCESS_KEY=
+AWS_ACCESS_KEY_ID=  #Your AWS Access Key
+AWS_SECRET_ACCESS_KEY= #Your AWS Secret Access Key
 ```
 
-The `test.env` file has the keys that are required for this project
+The `test.env` file has the required keys for this project.
 
-You will to create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
+You will create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
 For your Gemini API key, you can sign up for Google Gemini, and access your API key [here](https://aistudio.google.com/apikey)
-For Motherduck API key, you will need to have a Motherduck account. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Motherduck API key
+You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
 
-After filling the values the test.env file, you will need to rename it to a `.env`s
+After filling the values in the `test.env` file, you will need to rename it to a `.env`
