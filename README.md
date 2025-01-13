@@ -21,3 +21,7 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 - PyMuPDF: PDF parser
 - AWS S3: Data lake
 - Airtable: CRM
+
+## Requirements
+
+You will to create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
