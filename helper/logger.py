@@ -26,7 +26,7 @@ class Logger:
         self.logger.addHandler(file_handler)
 
         console_handler = logging.StreamHandler()
-        console_handler.setFormatter(logging.Formatter(log_fmt))
+        console_handler.setFormatter(formatter)
         self.logger.addHandler(console_handler)
 
     def get_logger(self):
