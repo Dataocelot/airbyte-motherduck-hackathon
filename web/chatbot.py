@@ -1,20 +1,45 @@
 import datetime
 import os
+import sys
 
 import boto3
 import streamlit as st
+import streamlit_authenticator as stauth
+import yaml
 from dotenv import load_dotenv
 from google import genai
+from yaml.loader import SafeLoader
+
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from helper.logger import Logger
+from helper.utils import get_airtable_table
 
 load_dotenv()
+
+# Initialize logger
+logger_instance = Logger()
+logger = logger_instance.get_logger()
+
+proj_dir = os.path.dirname(__file__)
+
+try:
+    with open(f"{proj_dir}/auth.yml") as file:
+        config = yaml.load(file, Loader=SafeLoader)
+        logger.info("Loaded Auth file")
+except Exception as e:
+    logger.exception(f"Unable to read yaml file {e}")
+
+
 model_name: str = "gemini-2.0-flash-exp"
 
-# Initialize the Gemini client (do this outside the function for efficiency)
 try:
     client = genai.Client(api_key=os.environ["GEMINI_API_KEY"])
-except KeyError:
+    logger.info("Set Gemini client")
+except KeyError as keyerror:
+    logger.exception(f"Issue setting up Gemini client {keyerror}")
     st.error("Please set the GEMINI_API_KEY environment variable.")
-    st.stop()  # Stop execution if the API key is not set
+    st.stop()
 
 
 def upload_to_s3(file, bucket_name, brand, object_name=None):
@@ -71,66 +96,97 @@ def generate_text_with_gemini_stream(prompt, model="gemini-pro"):
 
 def app():
     st.title("Dishwasher Repair Chatbot")
+    authenticator = stauth.Authenticate(
+        config["credentials"],
+        config["cookie"]["name"],
+        config["cookie"]["key"],
+        config["cookie"]["expiry_days"],
+    )
+    authenticator.login()
 
-    if "messages" not in st.session_state:
-        st.session_state.messages = []
+    if st.session_state["authentication_status"]:
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
 
-    if "user_id" not in st.session_state:
-        st.session_state.user_id = (
-            "user123"  # Generate a unique ID if you have user accounts
+        if "username" not in st.session_state:
+            authenticator.login()
+
+        if "dishwasher_model" not in st.session_state:
+            st.session_state.dishwasher_model = None
+
+        cs_accounts_table_obj = get_airtable_table(
+            table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_ID"]
+        )
+        cs_product_table_obj = get_airtable_table(
+            table_id=os.environ["AIRBYTE_PRODUCT_ID"]
         )
 
-    if "dishwasher_model" not in st.session_state:
-        st.session_state.dishwasher_model = None
-
-    models = ["Model A", "Model B", "Model C"]  # Get this from your data
-    selected_model = st.selectbox("Select your dishwasher model:", models)
-    st.session_state.dishwasher_model = selected_model
-
-    for message in st.session_state.messages:
-        with st.chat_message(message["role"]):
-            st.markdown(message["content"])
-
-    if user_question := st.chat_input(
-        "Hello there! Anuja from Dishwasher here, how can I help?"
-    ):
-        st.session_state.messages.append({"role": "user", "content": user_question})
-        with st.chat_message("user"):
-            st.markdown(user_question)
-
-        with st.chat_message("assistant", avatar="👷🏽‍♀️"):
-            message_placeholder = st.empty()
-            full_response = ""
-            start_time = datetime.datetime.now()
-            for text_chunk in generate_text_with_gemini_stream(
-                f"""Task:
-                You are friendly chatbot, working for a dishwasher service company
-                **Task:**
-                Act like a conversational human, don't be too verbose but still answer the User's question here:
-
-                {user_question}
-                """,
-                model_name,
-            ):
-                full_response += text_chunk
-                message_placeholder.markdown(
-                    full_response + "▌"
-                )  # Add a cursor for effect
-            message_placeholder.markdown(full_response)
-            end_time = datetime.datetime.now()
-
-        st.session_state.messages.append(
-            {"role": "assistant", "content": full_response}
+        cs_accounts = cs_accounts_table_obj.all(
+            fields=["Product Category", "Email", "Product Model Number"]
         )
 
-        chat_log = {
-            "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-            "user_id": st.session_state.user_id,
-            "dishwasher_model": st.session_state.dishwasher_model,
-            "messages": st.session_state.messages,
-            "metadata": {
-                "gemini_prompt": user_question,  # The prompt is the user question
-                "gemini_response_time": (end_time - start_time).total_seconds(),
-            },
-        }
-        # save_chat_log(chat_log)
+        for cs_account in cs_accounts:
+            if cs_account["fields"]["Email"] == st.session_state["username"]:
+                break
+        cs_product = cs_product_table_obj.get(
+            cs_account["fields"]["Product Category"][0],
+        )
+        cs_product_name = cs_product["fields"]["Name"]
+        cs_model_name = cs_account["fields"]["Product Model Number"]
+        selected_product = st.selectbox("Select your Product:", cs_product_name)
+        selected_model_number = st.selectbox("Select your Product:", cs_model_name)
+        st.session_state.product = selected_product
+        st.session_state.model_number = selected_model_number
+
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if user_question := st.chat_input(
+            "Hello there! Anuja from Dishwasher here, how can I help?"
+        ):
+            st.session_state.messages.append({"role": "user", "content": user_question})
+            with st.chat_message("user"):
+                st.markdown(user_question)
+
+            with st.chat_message("assistant", avatar="👷🏽‍♀️"):
+                message_placeholder = st.empty()
+                full_response = ""
+                start_time = datetime.datetime.now()
+                for text_chunk in generate_text_with_gemini_stream(
+                    f"""Task:
+                    You are friendly chatbot, working for a dishwasher service company
+                    **Task:**
+                    Act like a conversational human, don't be too verbose but still answer the User's question here:
+
+                    {user_question}
+                    """,
+                    model_name,
+                ):
+                    full_response += text_chunk
+                    message_placeholder.markdown(
+                        full_response + "▌"
+                    )  # Add a cursor for effect
+                message_placeholder.markdown(full_response)
+                end_time = datetime.datetime.now()
+
+            st.session_state.messages.append(
+                {"role": "assistant", "content": full_response}
+            )
+
+            chat_log = {
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "user_id": st.session_state.user_id,
+                "model_number": st.session_state.model_number,
+                "product": st.session_state.product,
+                "messages": st.session_state.messages,
+                "metadata": {
+                    "gemini_prompt": user_question,  # The prompt is the user question
+                    "gemini_response_time": (end_time - start_time).total_seconds(),
+                },
+            }
+            # save_chat_log(chat_log)
+    elif st.session_state["authentication_status"] is False:
+        st.error("Username/password is incorrect")
+    elif st.session_state["authentication_status"] is None:
+        st.warning("Please enter your username and password")
