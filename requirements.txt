@@ -42,6 +42,7 @@ httplib2==0.22.0
 huggingface-hub==0.25.2
 idna==3.10
 importlib_metadata==8.5.0
+inflection==0.5.1
 iniconfig==2.0.0
 Jinja2==3.1.5
 jmespath==1.0.1
@@ -68,6 +69,7 @@ pluggy==1.5.0
 propcache==0.2.1
 proto-plus==1.25.0
 protobuf==5.29.2
+pyairtable==3.0.1
 pyarrow==18.1.0
 pyasn1==0.6.1
 pyasn1_modules==0.4.1

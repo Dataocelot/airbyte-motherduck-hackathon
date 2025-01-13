@@ -154,7 +154,7 @@ def app():
             brand=cs_product_brand_name,
         )
         logger.info(f"Query: {query}")
-        troubleshooting_content = motherduck_conn.query(query)
+        troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
         logger.info(troubleshooting_content)
 
         for message in st.session_state.messages:
@@ -183,7 +183,7 @@ def app():
                     ```
 
                     ```Context
-                    {user_question}
+                    {troubleshooting_content}
                     ```
                     """,
                     model_name,
