@@ -11,6 +11,7 @@ import duckdb
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from mypy_boto3_s3.client import S3Client
+from pyairtable import Api
 
 from helper.logger import Logger
 
@@ -49,6 +50,16 @@ JSON_PG_NUM_PROMPT = """This a table of contents {file_type} file for a {device}
             {expected_output}
             ```
             """
+
+TROUBLESHOOTING_CONTENT_QUERY = """
+                                SELECT markdown_text
+                                from manual_sections
+                                WHERE model_number='{model_number}'
+                                AND device='{device}'
+                                AND brand='{brand}'
+                                AND section_name='smart_diagnosis'
+                                LIMIT 1
+                        """
 
 
 def auto_create_dir(directory: str | Path) -> None:
@@ -308,7 +319,7 @@ def get_object_from_s3(
 
 
 def create_motherduck_conn(
-    token: str = os.getenv("MOTHERDUCK_TOKEN"), db_name: str = "mydb"
+    token: str = os.environ["MOTHERDUCK_API_KEY"], db_name: str = "my_db"
 ) -> duckdb.DuckDBPyConnection:
     """
     Create a connection to a MotherDuck database
@@ -332,3 +343,30 @@ def create_motherduck_conn(
         raise ValueError("Motherduck token is required") from e
 
     return conn
+
+
+def get_airtable_table(
+    table_id: str,
+    base_id: str = os.environ["AIRTABLE_BASE_ID"],
+):
+    """
+    Retrieve an Airtable table using the provided table ID and base ID.
+
+    Args:
+        table_id (str): The ID of the Airtable table to retrieve.
+        base_id (str, optional): The ID of the Airtable base. Defaults to the value of the environment variable "AIRTABLE_BASE_ID".
+
+    Returns:
+        table: The Airtable table object if retrieval is successful, otherwise None.
+
+    Raises:
+        Exception: If there is an error during the retrieval process, the exception is caught and printed.
+    """
+
+    table = None
+    try:
+        api = Api(os.environ["AIRTABLE_API_KEY"])
+        table = api.table(base_id, table_id)
+    except Exception as e:
+        print(e)
+    return table

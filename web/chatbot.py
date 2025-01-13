@@ -13,7 +13,11 @@ from yaml.loader import SafeLoader
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
 from helper.logger import Logger
-from helper.utils import get_airtable_table
+from helper.utils import (
+    TROUBLESHOOTING_CONTENT_QUERY,
+    create_motherduck_conn,
+    get_airtable_table,
+)
 
 load_dotenv()
 
@@ -22,6 +26,8 @@ logger_instance = Logger()
 logger = logger_instance.get_logger()
 
 proj_dir = os.path.dirname(__file__)
+
+motherduck_conn = create_motherduck_conn()
 
 try:
     with open(f"{proj_dir}/auth.yml") as file:
@@ -122,21 +128,34 @@ def app():
         )
 
         cs_accounts = cs_accounts_table_obj.all(
-            fields=["Product Category", "Email", "Product Model Number"]
+            fields=["Product Category", "Email", "Product Model Number", "Brand Name"]
         )
 
         for cs_account in cs_accounts:
             if cs_account["fields"]["Email"] == st.session_state["username"]:
                 break
+        logger.info(cs_account)
         cs_product = cs_product_table_obj.get(
             cs_account["fields"]["Product Category"][0],
         )
+
         cs_product_name = cs_product["fields"]["Name"]
-        cs_model_name = cs_account["fields"]["Product Model Number"]
+        logger.info(cs_product)
+        cs_product_brand_name = cs_account["fields"]["Brand Name"][0]
+
+        cs_model_name = cs_account["fields"]["Product Model Number"][0]
         selected_product = st.selectbox("Select your Product:", cs_product_name)
         selected_model_number = st.selectbox("Select your Product:", cs_model_name)
         st.session_state.product = selected_product
         st.session_state.model_number = selected_model_number
+        query = TROUBLESHOOTING_CONTENT_QUERY.format(
+            model_number=cs_model_name,
+            device=cs_product_name,
+            brand=cs_product_brand_name,
+        )
+        logger.info(f"Query: {query}")
+        troubleshooting_content = motherduck_conn.query(query)
+        logger.info(troubleshooting_content)
 
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
@@ -155,11 +174,17 @@ def app():
                 start_time = datetime.datetime.now()
                 for text_chunk in generate_text_with_gemini_stream(
                     f"""Task:
-                    You are friendly chatbot, working for a dishwasher service company
+                    You are friendly support chatbot for helping customers troubleshoot
                     **Task:**
-                    Act like a conversational human, don't be too verbose but still answer the User's question here:
+                    Act like a conversational human, don't be too verbose but still answer the User's question here, given context:
 
+                    ```User question
                     {user_question}
+                    ```
+
+                    ```Context
+                    {user_question}
+                    ```
                     """,
                     model_name,
                 ):

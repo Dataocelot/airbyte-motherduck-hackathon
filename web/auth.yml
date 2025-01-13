@@ -1,0 +1,28 @@
+cookie:
+  expiry_days: 30
+  key: user_manual_chatbot_signature # Must be a string
+  name: user_manual_chatbot_cookie
+credentials:
+  usernames:
+    anya.moore@example.com:
+      email: anya.moore@example.com
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: Anya
+      last_name: Moore
+      logged_in: False # Will be managed automatically
+      password: password # Will be hashed automatically
+      roles: # Optional
+        - admin
+        - editor
+        - viewer
+    ethan.garcia@example.com:
+      email: ethan.garcia@example.com
+      failed_login_attempts: 0 # Will be managed automatically
+      first_name: Ethan
+      last_name: Garcia
+      logged_in: False # Will be managed automatically
+      password: password # Will be hashed automatically
+      roles: # Optional
+        - admin
+        - editor
+        - viewer

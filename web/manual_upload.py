@@ -1,5 +1,8 @@
 import boto3
 import streamlit as st
+from dotenv import load_dotenv
+
+load_dotenv()
 
 BUCKET_NAME = "airbyte-motherduck-hackathon"
 SUPPORTED_BRANDS = ["LG", "ASKO", "MIELE", "BOSCH"]
