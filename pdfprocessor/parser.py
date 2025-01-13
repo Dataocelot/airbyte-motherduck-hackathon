@@ -1,5 +1,6 @@
 import json
 import os
+import sys
 import tempfile
 from pathlib import Path
 
@@ -8,7 +9,9 @@ import pymupdf
 import pymupdf4llm
 from pymupdf import Document
 
-from utils import (
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+
+from helper.utils import (
     JSON_PG_NUM_PROMPT,
     TOC_IMAGE_PROMPT,
     Environment,
@@ -159,7 +162,9 @@ def extract_doc_map_using_gemini(
         response = chat_session.send_message("pathob\n")
         try:
             json_response = json.loads(response.text)
-            save_dict_to_json(json_response, Path(file).parent / f"{dest_filename}.txt")
+            save_dict_to_json(
+                json_response, Path(file).parent / f"{dest_filename}.json"
+            )
             return json_response
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode JSON response: {e}")
@@ -258,6 +263,7 @@ class PdfManualParser:
         device: str,
         toc_mapping_method: ExtractorOption,
         model_number: str | None,
+        brand: str,
         output_path: str | Path | None = None,
         environment: Environment = Environment.LOCAL,
     ):
@@ -268,8 +274,9 @@ class PdfManualParser:
         self.document = pymupdf.open(self.pdf_path)
         self.document_hash = get_hash_from_file(pdf_path)
         self.device = device
+        self.brand = brand
         self.model_number = model_number
-        self.root_data_dir, _, self.brand, _ = Path(self.pdf_path).parts
+        self.root_data_dir, _, _, _ = Path(self.pdf_path).parts
         if output_path:
             self.output_path = output_path
         else:
@@ -476,19 +483,21 @@ class PdfManualParser:
                 if toc_mappings:
                     toc_json_string = json.dumps(toc_mappings)
                     toc_json_bytes = toc_json_string.encode("utf-8")
-                    save_dict_to_json(
-                        toc_mappings,
-                        self.output_path
-                        / self.document_mapping_path
-                        / "toc_mapping.txt",
-                    )
-                    save_file_to_s3(
-                        toc_json_bytes,
-                        self.relative_dir
-                        / self.document_mapping_path
-                        / "toc_mapping.txt",
-                    )
-                    logger.info("Saving Table of contents to S3")
+                    if self.environment == Environment.LOCAL:
+                        save_dict_to_json(
+                            toc_mappings,
+                            self.output_path
+                            / self.document_mapping_path
+                            / "toc_mapping.json",
+                        )
+                    if self.environment == Environment.AWS:
+                        save_file_to_s3(
+                            toc_json_bytes,
+                            self.relative_dir
+                            / self.document_mapping_path
+                            / "toc_mapping.json",
+                        )
+                        logger.info("Saving Table of contents to S3")
 
                     page_start = pages_uris[0][0]
                     page_end = pages_uris[-1][0]
@@ -506,14 +515,13 @@ class PdfManualParser:
                         toc_mapping=toc_mappings,
                         simplified_toc_mapping=simplified_toc_map,
                     )
-                    self.toc_details_dict = toc_details
-
-                    save_dict_to_json(
-                        simplified_toc_map,
-                        self.output_path
-                        / self.document_mapping_path
-                        / "simplified_toc_mapping.txt",
-                    )
+                    if self.environment == Environment.LOCAL:
+                        save_dict_to_json(
+                            simplified_toc_map,
+                            self.output_path
+                            / self.document_mapping_path
+                            / "simplified_toc_mapping.json",
+                        )
                     if self.environment == Environment.AWS:
                         # Convert the dictionary to a JSON string
                         json_string = json.dumps(simplified_toc_map)
@@ -524,7 +532,7 @@ class PdfManualParser:
                             json_bytes,
                             self.relative_dir
                             / self.document_mapping_path
-                            / "simplified_toc_mapping.txt",
+                            / "simplified_toc_mapping.json",
                         )
                     logger.info("Table of contents extracted and Saved")
 
@@ -540,12 +548,14 @@ class PdfManualParser:
     def get_subject_of_interest_section_map(
         self, subject_of_interest: str, dest_filename: str
     ):
-        if not hasattr(self, "toc_details_dict"):
+        if not hasattr(self, "toc_details"):
+            self.toc_details = self._extract_toc_map_from_img()
+        elif self.toc_details is None:
             self.toc_details = self._extract_toc_map_from_img()
 
         if self.toc_details:
             # fmt: off
-            toc_simplified_mapping_path = self.document_mapping_path / "simplified_toc_mapping.txt"
+            toc_simplified_mapping_path = self.document_mapping_path / "simplified_toc_mapping.json"
             # fmt: on
 
             if self.environment == Environment.LOCAL:
@@ -611,14 +621,34 @@ class PdfManualParser:
 
     def extract_all_sections_content(self) -> list:
         result = []
-        if not hasattr(self, "toc_details_dict"):
+        if not hasattr(self, "toc_details"):
             self.toc_details = self._extract_toc_map_from_img()
-        if self.toc_details_dict:
+        elif self.toc_details is None:
+            self.toc_details = self._extract_toc_map_from_img()
+        if self.toc_details:
             for (
                 section_name,
                 page_span,
-            ) in self.toc_details_dict.simplified_toc_mapping.items():
-                result.append(self.extract_section_content(section_name, *page_span))
+            ) in self.toc_details.simplified_toc_mapping.items():
+                content_dict = self.extract_section_content(section_name, *page_span)
+                if self.environment == Environment.AWS:
+                    save_to_path = f"{self.relative_dir}/sections/{section_name}.json"
+                    json_content_string = json.dumps(content_dict)
+                    json_bytes = json_content_string.encode("utf-8")
+                    save_file_to_s3(
+                        json_bytes,
+                        save_to_path,
+                        content_type="application/json",
+                    )
+                    logger.info(
+                        f"Saved Searched contents Image result to the S3 Bucket: {save_to_path}"
+                    )
+                if self.environment == Environment.LOCAL:
+                    save_dict_to_json(
+                        content_dict,
+                        f"{self.output_path}/sections/{section_name}.json",
+                    )
+                result.append(content_dict)
             logger.info("Extracted all contents found in the Table of contents")
         return result
 

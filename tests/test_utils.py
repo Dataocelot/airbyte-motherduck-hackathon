@@ -3,6 +3,8 @@ import os
 import sys
 import tempfile
 
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
+
 from helper.utils import save_dict_to_json
 
 
