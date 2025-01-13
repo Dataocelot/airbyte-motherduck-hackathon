@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import BinaryIO
 
 import boto3
+import duckdb
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from mypy_boto3_s3.client import S3Client
@@ -304,3 +305,30 @@ def get_object_from_s3(
     except Exception as e:
         logger.exception(f"An unexpected error occurred: {e}")
         return None
+
+
+def create_motherduck_conn(
+    token: str = os.getenv("MOTHERDUCK_TOKEN"), db_name: str = "mydb"
+) -> duckdb.DuckDBPyConnection:
+    """
+    Create a connection to a MotherDuck database
+
+    Parameters
+    ----------
+    token : str
+        The API token for authentication
+    db_name : str
+        The name of the database to connect to
+
+    Returns
+    -------
+    duckdb.DuckDBPyConnection
+        The connection object to the MotherDuck database
+    """
+    try:
+        conn = duckdb.connect(f"md:{db_name}?motherduck_token={token}")
+    except Exception as e:
+        logger.error(f"Unable to connect to Motherduck {e}")
+        raise ValueError("Motherduck token is required") from e
+
+    return conn
