@@ -12,12 +12,12 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 
 ## Tools Used
 
-Airbyte: Data Ingestion
-MotherDuck: Data Warehouse
-Google Gemini: LLM
-Streamlit: User Interface
-Github Copilot: Code review
-Github: Version Control
-PyMuPDF: PDF parser
-AWS S3: Data lake
-Airtable: CRM
+- Airbyte: Data Ingestion
+- MotherDuck: Data Warehouse
+- Google Gemini: LLM
+- Streamlit: User Interface
+- Github Copilot: Code review
+- Github: Version Control
+- PyMuPDF: PDF parser
+- AWS S3: Data lake
+- Airtable: CRM
