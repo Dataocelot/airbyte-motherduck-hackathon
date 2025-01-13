@@ -174,7 +174,8 @@ def app():
                 start_time = datetime.datetime.now()
                 for text_chunk in generate_text_with_gemini_stream(
                     f"""Task:
-                    You are friendly support chatbot for helping customers troubleshoot
+                    You are friendly support chatbot for helping customers troubleshoot given a user manual
+                    If unsure ask user to contact support via phone
                     **Task:**
                     Act like a conversational human, don't be too verbose but still answer the User's question here, given context:
 
@@ -201,7 +202,7 @@ def app():
 
             chat_log = {
                 "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
-                "user_id": st.session_state.user_id,
+                "user_id": st.session_state.username,
                 "model_number": st.session_state.model_number,
                 "product": st.session_state.product,
                 "messages": st.session_state.messages,

@@ -57,7 +57,7 @@ TROUBLESHOOTING_CONTENT_QUERY = """
                                 WHERE model_number='{model_number}'
                                 AND device='{device}'
                                 AND brand='{brand}'
-                                AND section_name='smart_diagnosis'
+                                AND section_name='cleaning_and_caring'
                                 LIMIT 1
                         """
 
