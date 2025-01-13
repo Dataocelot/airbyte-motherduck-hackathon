@@ -24,9 +24,7 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 
 ## Requirements
 
-You will to create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
-
-The `test.env` file has the required API keys you need for this project
+For this project you will to fill in the values of the following credentials in order to test it locally:
 
 ```bash
 # Fill in your keys here
@@ -41,5 +39,10 @@ AWS_ACCESS_KEY_ID=
 AWS_SECRET_ACCESS_KEY=
 ```
 
+The `test.env` file has the keys that are required for this project
+
+You will to create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
 For your Gemini API key, you can sign up for Google Gemini, and access your API key [here](https://aistudio.google.com/apikey)
 For Motherduck API key, you will need to have a Motherduck account. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Motherduck API key
+
+After filling the values the test.env file, you will need to rename it to a `.env`s
