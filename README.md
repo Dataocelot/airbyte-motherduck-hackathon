@@ -21,6 +21,7 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 - PyMuPDF: PDF parser
 - AWS S3: Data lake
 - Airtable: CRM
+- Terraform: Infrastructure as code
 
 ## Requirements
 
@@ -47,11 +48,9 @@ You must have a Motherduck account to access the Motherduck API key. [Here](http
 
 After filling the values in the `test.env` file, you will need to rename the `tets.env` file to `.env`.
 
-There are 3 ways to set the resources for this project
+To get the project up and running, please make sure you have terraform set up on your machine, you can do install it from [here](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) as we use Terraform to provision the resources needed for this project (AWS S3, Airbyte source, Docker container).
 
-The first method uses Terraform to provision the resources the AWS S3 bucket, creates the docker container and also creates the S3 Source in Airbyte for this project.
-
-The following command sets the environmental variables as this is required to provision the resources.
+Assuming you have set up Terraform, and filled in your .env file, you can then run the following commands from the project root directory.
 
 ```bash
 source .env
