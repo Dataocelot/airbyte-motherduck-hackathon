@@ -21,13 +21,16 @@ For this project you will need to fill in the values of the following credential
 GEMINI_API_KEY= #Your Google GEMINI API key
 BUCKET_NAME= #Your S3 Bucket name
 DB_NAME= #Your DB name in Motherduck
-ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
-AIRTABLE_BASE_ID= #The Airtable base table id
-AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID= #The Airtable Customer accounts table
 AIRTABLE_API_KEY= #Your Airtable access token
-AIRTABLE_BASE= #Your Airtable Base
+ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
+AIRTABLE_BASE_ID= #The Airtable Base id
+AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID= #The Airtable Customer accounts table id
+AIRBYTE_PRODUCT_TABLE_ID= #Your Airtable Product table id
+AIRBYTE_WORKSPACE_ID= #Your Airtable workspace ID
 AWS_ACCESS_KEY_ID= #Your AWS Access Key
 AWS_SECRET_ACCESS_KEY= #Your AWS Secret Access Key
+AIRBYTE_CLIENT_ID= # Your Airbyte application client ID
+AIRBYTE_CLIENT_SECRET= # Your Airbyte application client secret
 MOTHERDUCK_API_KEY= #Your Motherduck API key
 ```
 
