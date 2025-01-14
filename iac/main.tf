@@ -9,7 +9,7 @@ terraform {
       version = "~> 3.0.1"
     }
     airbyte = {
-      source = "airbytehq/airbyte"
+      source  = "airbytehq/airbyte"
       version = "0.6.5"
     }
   }
@@ -21,8 +21,12 @@ provider "aws" {
 provider "docker" {}
 
 provider "airbyte" {
-  client_id = var.client_id
+  client_id     = var.client_id
   client_secret = var.client_secret
+}
+
+locals {
+  env_file_content = file("../.env")
 }
 resource "random_id" "airbyte_id" {
   byte_length = 8
@@ -33,6 +37,9 @@ resource "aws_s3_bucket" "s3_bucket" {
     Name        = var.bucket_name
     Environment = "dev"
     Purpose     = "Hackathon"
+  }
+  lifecycle {
+    prevent_destroy = false
   }
 }
 
@@ -58,7 +65,7 @@ resource "docker_container" "airbyte-hackathon" {
 
 }
 
-resource "airbyte_source_s3" "aribyte_source_s3" {
+resource "airbyte_source_s3" "source_s3" {
   configuration = {
     aws_access_key_id     = "${var.aws_access_key_id}"
     aws_secret_access_key = "${var.aws_secret_access_key}"
@@ -82,18 +89,18 @@ resource "airbyte_source_s3" "aribyte_source_s3" {
       },
     ]
   }
-  name          = "Airbyte-motherduck-s3-${random_id.airbyte_id.hex}"
-  workspace_id  = var.airbyte_workspace_id
+  name         = "airbyte_s3_src_${random_id.airbyte_id.hex}"
+  workspace_id = var.airbyte_workspace_id
 }
 
 
 resource "airbyte_destination_duckdb" "destination_duckdb" {
   configuration = {
-    destination_path   = "motherduck:"
-    motherduck_api_key = "...my_motherduck_api_key..."
-    schema             = "main"
+    destination_path   = "md:"
+    motherduck_api_key = "${var.motherduck_api_key}"
+    schema             = "my_db"
   }
-  definition_id = "07129d46-44f9-4dd3-954c-7cfb82ef1e01"
-  name          = "Emmett Herzog"
-  workspace_id  = "77c9e2c8-5c90-44a2-83ff-157a47112db1"
+  name         = "airbyte_motherduck_destination_${random_id.airbyte_id.hex}"
+  workspace_id = var.airbyte_workspace_id
+  depends_on   = [source_s3]
 }
