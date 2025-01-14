@@ -154,9 +154,11 @@ def app():
             brand=cs_product_brand_name,
         )
         logger.info(f"Query: {query}")
-        troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
-        logger.info(troubleshooting_content)
-
+        try:
+            troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
+            logger.info(troubleshooting_content)
+        except IndexError:
+            troubleshooting_content = "Apologies, for the issue you are currently experiencing. One of our technicians will get in touch with you"
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
