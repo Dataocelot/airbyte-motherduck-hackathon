@@ -21,6 +21,7 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 - PyMuPDF: PDF parser
 - AWS S3: Data lake
 - Airtable: CRM
+- Terraform: Infrastructure as code
 
 ## Requirements
 
@@ -45,10 +46,21 @@ You will create an Airbyte cloud account, and you can sign up [here](https://air
 For your Gemini API key, you can sign up for Google Gemini, and access your API key [here](https://aistudio.google.com/apikey)
 You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
 
-After filling the values in the `test.env` file, you will need to rename it to a `.env`
+After filling the values in the `test.env` file, you will need to rename the `tets.env` file to `.env`.
+
+To get the project up and running, please make sure you have terraform set up on your machine, you can do install it from [here](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) as we use Terraform to provision the resources needed for this project (AWS S3, Airbyte source, Docker container).
+
+Assuming you have set up Terraform, and filled in your .env file, you can then run the following commands from the project root directory.
 
 ```bash
 source .env
 ```
 
-We use Terraform to create the s3 bucket
+Next we create the resources by first changing the directory to the `iac` and then running the terraform commands. Terraform will create the required resources needed for the project.
+
+```bash
+cd iac
+terraform init
+terraform plan
+terraform apply
+```
