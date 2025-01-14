@@ -30,14 +30,16 @@ For this project you will to fill in the values of the following credentials in 
 ```bash
 # Fill in your keys here
 GEMINI_API_KEY= #Your Google GEMINI API key
-MOTHERDUCK_API_KEY= #Your Motherduck API key
 BUCKET_NAME= #Your S3 Bucket name
 DB_NAME= #Your DB name in Motherduck
+ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
+AIRTABLE_BASE_ID= #The Airtable base table id
+AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID= #The Airtable Customer accounts table
 AIRTABLE_ACCESS_TOKEN= #Your Airtable access token
-ENVIRONMENT=LOCAL #Default is LOCAL or it can be AWS
 AIRTABLE_BASE= #Your Airtable Base
-AWS_ACCESS_KEY_ID=  #Your AWS Access Key
+AWS_ACCESS_KEY_ID= #Your AWS Access Key
 AWS_SECRET_ACCESS_KEY= #Your AWS Secret Access Key
+MOTHERDUCK_API_KEY= #Your Motherduck API key
 ```
 
 The `test.env` file has the required keys for this project.
