@@ -102,5 +102,5 @@ resource "airbyte_destination_duckdb" "destination_duckdb" {
   }
   name         = "airbyte_motherduck_destination_${random_id.airbyte_id.hex}"
   workspace_id = var.airbyte_workspace_id
-  depends_on   = [source_s3]
+  depends_on   = [airbyte_source_s3.source_s3]
 }
