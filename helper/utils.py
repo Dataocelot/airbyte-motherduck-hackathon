@@ -346,14 +346,14 @@ def create_motherduck_conn(
 
 def get_airtable_table(
     table_id: str,
-    base_id: str = os.environ["AIRTABLE_BASE_ID"],
+    base_id: str | None = None,
 ):
     """
     Retrieve an Airtable table using the provided table ID and base ID.
 
     Args:
         table_id (str): The ID of the Airtable table to retrieve.
-        base_id (str, optional): The ID of the Airtable base. Defaults to the value of the environment variable "AIRTABLE_BASE_ID".
+        base_id (str): The ID of the Airtable base. Defaults to the value of the environment variable "AIRTABLE_BASE_ID".
 
     Returns:
         table: The Airtable table object if retrieval is successful, otherwise None.
@@ -363,6 +363,8 @@ def get_airtable_table(
     """
 
     table = None
+    if not base_id:
+        base_id = os.environ["AIRTABLE_BASE_ID"]
     try:
         api = Api(os.environ["AIRTABLE_API_KEY"])
         table = api.table(base_id, table_id)
