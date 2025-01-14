@@ -318,7 +318,7 @@ def get_object_from_s3(
 
 
 def create_motherduck_conn(
-    token: str = os.environ["MOTHERDUCK_API_KEY"], db_name: str = "my_db"
+    token: str | None = os.getenv("MOTHERDUCK_API_KEY"), db_name: str = "my_db"
 ) -> duckdb.DuckDBPyConnection:
     """
     Create a connection to a MotherDuck database
