@@ -10,22 +10,11 @@ In this hackathon, we aim to address this challenge by leveraging data and AI to
 
 We developed Anuja, a data-driven customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
 
-## Tools Used
+## Setting Up
 
-- Airbyte: Data Ingestion
-- MotherDuck: Data Warehouse
-- Google Gemini: LLM
-- Streamlit: User Interface
-- Github Copilot: Code review
-- Github: Version Control
-- PyMuPDF: PDF parser
-- AWS S3: Data lake
-- Airtable: CRM
-- Terraform: Infrastructure as code
+# Requirements
 
-## Requirements
-
-For this project you will to fill in the values of the following credentials in order to test it locally:
+For this project you will need to fill in the values of the following credentials found in the `test.env` file in the project root directory:
 
 ```bash
 # Fill in your keys here
@@ -35,7 +24,7 @@ DB_NAME= #Your DB name in Motherduck
 ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
 AIRTABLE_BASE_ID= #The Airtable base table id
 AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID= #The Airtable Customer accounts table
-AIRTABLE_ACCESS_TOKEN= #Your Airtable access token
+AIRTABLE_API_KEY= #Your Airtable access token
 AIRTABLE_BASE= #Your Airtable Base
 AWS_ACCESS_KEY_ID= #Your AWS Access Key
 AWS_SECRET_ACCESS_KEY= #Your AWS Secret Access Key
@@ -70,3 +59,16 @@ terraform apply
 ## Airtable
 
 [Here](https://airtable.com/app9prJZjrqpUAnZt/shrbOzAfiZVwzwO9D) is the CRM that was used for this project which was created, it was created in Airtable that . You can copy the base to your own airtable account workspace.
+
+## Tools Used
+
+- Airbyte: Data Ingestion
+- MotherDuck: Data Warehouse
+- Google Gemini: LLM
+- Streamlit: User Interface
+- Github Copilot: Code review
+- Github: Version Control
+- PyMuPDF: PDF parser
+- AWS S3: Data lake
+- Airtable: CRM
+- Terraform: Infrastructure as code
