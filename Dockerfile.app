@@ -2,7 +2,7 @@ FROM python:3.11-slim-bullseye
 
 WORKDIR /app
 
-COPY ./web/requirements.txt ./.env ./
+COPY ./web/requirements.txt .env ./
 RUN pip install --cache-dir .cache/pip -r requirements.txt
 
 COPY ./web /app/web
