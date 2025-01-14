@@ -45,10 +45,23 @@ You will create an Airbyte cloud account, and you can sign up [here](https://air
 For your Gemini API key, you can sign up for Google Gemini, and access your API key [here](https://aistudio.google.com/apikey)
 You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
 
-After filling the values in the `test.env` file, you will need to rename it to a `.env`
+After filling the values in the `test.env` file, you will need to rename the `tets.env` file to `.env`.
+
+There are 3 ways to set the resources for this project
+
+The first method uses Terraform to provision the resources the AWS S3 bucket, creates the docker container and also creates the S3 Source in Airbyte for this project.
+
+The following command sets the environmental variables as this is required to provision the resources.
 
 ```bash
 source .env
 ```
 
-We use Terraform to create the s3 bucket
+Next we create the resources by first changing the directory to the `iac` and then running the terraform commands. Terraform will create the required resources needed for the project.
+
+```bash
+cd iac
+terraform init
+terraform plan
+terraform apply
+```
