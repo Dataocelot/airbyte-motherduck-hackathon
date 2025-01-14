@@ -1,7 +1,15 @@
+import os
 from pathlib import Path
+
+from dotenv import load_dotenv
 
 from helper.utils import Environment, ExtractorOption
 from pdfprocessor.parser import PdfManualParser
+
+load_dotenv()
+
+env_to_use = os.getenv("ENVIRONMENT", "LOCAL")
+envs = {"AWS": Environment.AWS, "LOCAL": Environment.LOCAL}
 
 file_details = [
     (file, file.stem, file.parent.name)
@@ -13,7 +21,7 @@ for file_detail in file_details:
         model_number=file_detail[1],
         brand=file_detail[2],
         device="Dishwasher",
-        environment=Environment.LOCAL,
+        environment=envs[env_to_use],
         toc_mapping_method=ExtractorOption.GEMINI,
     )
 
@@ -27,3 +35,4 @@ for file_detail in file_details:
     )
     pdf_parser.extract_all_sections_content()
     pdf_parser.cleanup()
+    break

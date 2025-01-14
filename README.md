@@ -46,3 +46,9 @@ For your Gemini API key, you can sign up for Google Gemini, and access your API 
 You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
 
 After filling the values in the `test.env` file, you will need to rename it to a `.env`
+
+```bash
+source .env
+```
+
+We use Terraform to create the s3 bucket
