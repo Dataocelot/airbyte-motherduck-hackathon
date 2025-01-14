@@ -1,6 +1,6 @@
-# Data-Driven Customer Support: Transforming the Customer supoport experience at 'Appliance Ocelot'
+# Data-Driven Customer Support: Transforming the Customer supoport experience at 'Ocelot Living'
 
-Appliance Ocelot is a brand that sells top home electronics to customers both online and in-store.
+Ocelot Living is a brand that sells top home electronics to customers both online and in-store.
 
 Recently, we discovered that a significant portion of customer support time is spent addressing repetitive queries that are already explained in the user manuals of our products. This not only overwhelms our Customer support team but also delays resolutions for more complex issues, impacting customer satisfaction.
 
@@ -64,3 +64,7 @@ terraform init
 terraform plan
 terraform apply
 ```
+
+## Airtable
+
+[Here](https://airtable.com/app9prJZjrqpUAnZt/shrbOzAfiZVwzwO9D) is the CRM that was used for this project which was created, it was created in Airtable that . You can copy the base to your own airtable account workspace.
