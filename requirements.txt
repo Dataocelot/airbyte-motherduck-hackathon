@@ -17,7 +17,10 @@ grpcio-status==1.69.0
 httplib2==0.22.0
 idna==3.10
 inflection==0.5.1
+iniconfig==2.0.0
 jmespath==1.0.1
+packaging==24.2
+pluggy==1.5.0
 proto-plus==1.25.0
 protobuf==5.29.3
 pyairtable==3.0.1
@@ -28,6 +31,7 @@ pydantic_core==2.27.2
 PyMuPDF==1.25.1
 pymupdf4llm==0.0.17
 pyparsing==3.2.1
+pytest==8.3.4
 python-dateutil==2.9.0.post0
 python-dotenv==1.0.1
 requests==2.32.3
