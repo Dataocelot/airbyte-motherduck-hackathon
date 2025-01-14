@@ -4,13 +4,12 @@ import os
 import tempfile
 from enum import Enum
 from pathlib import Path
-from typing import BinaryIO
+from typing import BinaryIO, Optional
 
 import boto3
 import duckdb
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
-from mypy_boto3_s3.client import S3Client
 from pyairtable import Api
 
 from helper.logger import Logger
@@ -183,7 +182,7 @@ class PageContentSearchType(Enum):
     EARLIEST_PAGE_FIRST = "earliest_page_first"
 
 
-def get_s3_client(bucket_name: str | None) -> S3Client | None:
+def get_s3_client(bucket_name: str | None) -> Optional["S3Client"]:
     """Retrieves an S3 client.
 
     Args:
