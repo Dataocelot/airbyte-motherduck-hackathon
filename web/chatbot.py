@@ -121,10 +121,10 @@ def app():
             st.session_state.dishwasher_model = None
 
         cs_accounts_table_obj = get_airtable_table(
-            table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_ID"]
+            table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID"]
         )
         cs_product_table_obj = get_airtable_table(
-            table_id=os.environ["AIRBYTE_PRODUCT_ID"]
+            table_id=os.environ["AIRBYTE_PRODUCT_TABLE_ID"]
         )
 
         cs_accounts = cs_accounts_table_obj.all(
