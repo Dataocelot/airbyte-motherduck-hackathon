@@ -28,8 +28,8 @@ provider "airbyte" {
 locals {
   env_file_content = file("../.env")
 }
-resource "random_id" "airbyte_id" {
-  byte_length = 8
+resource "random_id" "unique_id" {
+  byte_length = 4
 }
 resource "aws_s3_bucket" "s3_bucket" {
   bucket = var.bucket_name
@@ -89,7 +89,7 @@ resource "airbyte_source_s3" "source_s3" {
       },
     ]
   }
-  name         = "airbyte_s3_src_${random_id.airbyte_id.hex}"
+  name         = "airbyte_s3_src_${random_id.unique_id.hex}"
   workspace_id = var.airbyte_workspace_id
 }
 
@@ -100,7 +100,7 @@ resource "airbyte_destination_duckdb" "destination_duckdb" {
     motherduck_api_key = "${var.motherduck_api_key}"
     schema             = "main"
   }
-  name         = "airbyte_motherduck_destination_${random_id.airbyte_id.hex}"
+  name         = "airbyte_motherduck_destination_${random_id.unique_id.hex}"
   workspace_id = var.airbyte_workspace_id
   depends_on   = [airbyte_source_s3.source_s3]
 }
@@ -112,9 +112,9 @@ resource "airbyte_connection" "s3-airbyte-motherduck-connection" {
   name                                 = "air_md_dync"
   namespace_definition                 = "destination"
   non_breaking_schema_updates_behavior = "propagate_columns"
-  prefix                               = "hackathons"
+  prefix                               = "hackathon_"
   source_id                            = airbyte_source_s3.source_s3.source_id
-  status                               = "inactive"
+  status                               = "active"
 }
 
 resource "airbyte_source_airtable" "source_airtable" {
@@ -127,4 +127,15 @@ resource "airbyte_source_airtable" "source_airtable" {
   }
   name         = "crm_source_airtable"
   workspace_id = var.airbyte_workspace_id
+}
+
+resource "airbyte_connection" "airtable-airbyte-motherduck-connection" {
+  data_residency                       = "eu"
+  destination_id                       = airbyte_destination_duckdb.destination_duckdb.destination_id
+  name                                 = "airtable_sync"
+  namespace_definition                 = "destination"
+  non_breaking_schema_updates_behavior = "propagate_columns"
+  prefix                               = "hackathon_"
+  source_id                            = airbyte_source_airtable.source_airtable.source_id
+  status                               = "active"
 }
