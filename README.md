@@ -18,22 +18,29 @@ We developed Anuja, a data-driven AI customer support chatbot designed to assist
 
 #### 1. Data sources
 
-The Data sources are as are:
+The Data sources are:
 
-- An Airtable CRM made that records appliances purchased by customers at Appliance Ocelot
+- An Airtable CRM made containing the records of appliances purchased by customers at Appliance Ocelot
   <img src="docs/images/customer_crm.png" alt="Airtable CRM table"/>
 
-- An S3 bucket that conatins semi-structured data of the parsed output (json) of PDFs of User manuals. This parsed JSON data was parsed using the python pacakge PYMuPDF, as well as Google Gemini to enable us scan relevant sections of the user manuals that hold information related to common truobleshooting and maintenance issues.
+- An S3 bucket that conatins semi-structured data of the parsed output (JSON) of PDFs of User manuals.
+
+This parsed JSON data was parsed using the python pacakge PYMuPDF, as well as Google Gemini to enable us scan relevant sections of the user manuals that hold information related to common truobleshooting and maintenance issues.
 
 #### 2. Data Ingestion
 
-Airbyte was used as our ingestion platform to ingest the different sections of the PDF user manuals which were saved as json data in s3, this data was then loaded into MotherDuck and used to provided more context which helps to empower our customer support chatbot, Anuja.
+Airbyte was used as our ingestion platform to ingest the different sections of the PDF user manuals which were saved as JSON data in s3, this data was then loaded into a table called `manual_sections` in MotherDuck our Data warehouse.
 
-We also used Airbyte to ingest the different tables (structured) of data created in our Airtable base.
+Airbyte was also used to ingest the different tables (structured) of data created in our Airtable base.
 
-#### 2. Data Warehouse
+#### 3. Data Warehouse
 
-The parsed JSON data from the
+The parsed JSON data from the User manuals stored were stored in a table called `manual_sections`. This table provided more context to our chabot by giving it the relevant sections where particular information, such as trobleshooting, error codes in the user manuals. Airtable's tables ingested in Airbyte empower our chatbot by allowing us to filter down to the particular User manual that contain the information based off on the User's purchase. This streamlining helps us etract only the relevant information that can be used in answering the user's questions or solving the user's issues.
+
+#### 4. Google Gemini
+
+Google Gemini was our chosen solution choice for our LLM because of it's relatively easy cost as well as it's ability of `structured output` capability. We chose `gemini-2.0-flash-exp` version because of its notable speed and performance.
+We used Google Gemini to empower our chatbot by providing it with a prompt + context (which was gotten from the parsed User manuals)
 
 # Setting Up
 
