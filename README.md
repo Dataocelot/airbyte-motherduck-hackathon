@@ -8,7 +8,7 @@ In this hackathon, we aim to address this challenge by leveraging data and AI to
 
 ## The Solution: `👷🏽‍♀️ Anuja`
 
-We developed Anuja, a data-driven customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
+We developed Anuja, a data-driven AI customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
 
 (Note: for this hackathon we limited the scope to only Dishwashers, but this can be extended to other applainces as well)
 
@@ -18,12 +18,22 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 
 #### 1. Data sources
 
-The Data sources are as follows:
+The Data sources are as are:
 
-- A Airtable CRM made thst records appliances purchased by customers
+- An Airtable CRM made that records appliances purchased by customers at Appliance Ocelot
   <img src="docs/images/customer_crm.png" alt="Airtable CRM table"/>
 
-- An S3 bucket that conatins parsed PDFs saved as JSON files
+- An S3 bucket that conatins semi-structured data of the parsed output (json) of PDFs of User manuals. This parsed JSON data was parsed using the python pacakge PYMuPDF, as well as Google Gemini to enable us scan relevant sections of the user manuals that hold information related to common truobleshooting and maintenance issues.
+
+#### 2. Data Ingestion
+
+Airbyte was used as our ingestion platform to ingest the different sections of the PDF user manuals which were saved as json data in s3, this data was then loaded into MotherDuck and used to provided more context which helps to empower our customer support chatbot, Anuja.
+
+We also used Airbyte to ingest the different tables (structured) of data created in our Airtable base.
+
+#### 2. Data Warehouse
+
+The parsed JSON data from the
 
 # Setting Up
 
