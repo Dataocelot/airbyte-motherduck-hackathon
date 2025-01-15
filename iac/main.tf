@@ -81,11 +81,12 @@ resource "airbyte_source_s3" "source_s3" {
         globs = [
           "output/brand=*/model_number=*/sections/*.json",
         ]
-        name                                        = "manual_sections"
-        recent_n_files_to_read_for_schema_discovery = 5
-        schemaless                                  = true
-        validation_policy                           = "Emit Record"
-        schemaless                                  = false
+
+        input_schema = "{\"brand\": \"string\", \"section_name\": \"string\", \"markdown_text\": \"string\", \"document_hash\": \"string\", \"model_number\": \"string\", \"device\": \"string\"}"
+        name         = "manual_sections"
+        validation_policy = "Emit Record"
+        schemaless        = false
+
       },
     ]
   }
