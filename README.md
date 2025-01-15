@@ -146,6 +146,12 @@ you should also have a now running as well on a Docker container called `airbyte
 
 The next task will be to load the data in Airbyte
 
+Firs off you'd need to parse the PDFs, you can do that in the <img src="docs/images/upload_screen.png"> web page
+
+After parsing you can then successfully load the data as shown below
+
+<img src="docs/images/s3-airbyte-sync.png">
+
 Loading Data
 
 ## Tools Used
