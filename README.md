@@ -14,14 +14,14 @@ We developed Anuja, a data-driven customer support chatbot designed to assist cu
 
 ### Data Architecture
 
-<img src="docs/images/diagram-export-15-01-2025-01_39_09.png">
+<img src="docs/images/diagram-export-15-01-2025-01_39_09.png"/>
 
 #### 1. Data sources
 
 The Data sources are as follows:
 
 - A Airtable CRM made thst records appliances purchased by customers
-  <img src="docs/images/customer_crm.png" alt="Airtable CRM table">
+  <img src="docs/images/customer_crm.png" alt="Airtable CRM table"/>
 
 - An S3 bucket that conatins parsed PDFs saved as JSON files
 
@@ -104,7 +104,23 @@ terraform plan
 terraform apply
 ```
 
-If successful you should now see an s3 bucket already created, in s3 for you
+---
+
+If successful you should now see an s3 bucket already created for you in your AWS account
+
+## <img alt="s3 bucket" src="docs/images/s3.png"/>,
+
+and in Airbyte an s3 source <img alt="Airbyte s3 source" src="docs/images/airbyte_source.png"/>
+
+and an Airbyte destination
+
+<img alt="Airbyte destination" src="docs/images/airbyte_destination.png"/>
+
+you should also have a now running Docker container called `airbyte-motherduck-web-container`
+
+<img alt="Docker container" src="docs/images/docker_container.png"/>
+
+The next task will be to load the data
 
 ## Tools Used
 
