@@ -12,14 +12,10 @@ from yaml.loader import SafeLoader
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from db_utils import get_duckdb_conn, is_schema_exists, is_table_exists
+from db_utils import get_duckdb_conn, is_table_exists
 
 from helper.logger import Logger
-from helper.utils import (
-    TROUBLESHOOTING_CONTENT_QUERY,
-    create_motherduck_conn,
-    get_airtable_table,
-)
+from helper.utils import TROUBLESHOOTING_CONTENT_QUERY, get_airtable_table
 
 load_dotenv()
 
@@ -32,7 +28,7 @@ logger = logger_instance.get_logger()
 proj_dir = os.path.dirname(__file__)
 
 motherduck_conn = get_duckdb_conn("my_db", os.environ["MOTHERDUCK_API_KEY"])
-is_table_created = is_table_exists("my_db", "manual_sections")
+is_table_created = is_table_exists(motherduck_conn, "my_db", "manual_sections")
 
 try:
     with open(f"{proj_dir}/auth.yml") as file:
@@ -111,6 +107,9 @@ def app():
     )
     authenticator.login()
 
+    if "disabled" not in st.session_state:
+        st.session_state.disabled = False
+
     if st.session_state["authentication_status"]:
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -121,6 +120,10 @@ def app():
         if "appliance_model" not in st.session_state:
             st.session_state.appliance_model = None
 
+        def disable():
+            st.session_state.disabled = is_table_created
+
+        # Airtable
         cs_accounts_table_obj = get_airtable_table(
             table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID"]
         )
@@ -147,80 +150,78 @@ def app():
         selected_model_number = st.selectbox("Select your Product:", cs_model_name)
         st.session_state.product = selected_product
         st.session_state.model_number = selected_model_number
+        # Airtable
 
-        if is_table_created:
-            query = TROUBLESHOOTING_CONTENT_QUERY.format(
-                model_number=cs_model_name,
-                device=cs_product_name,
-                brand=cs_product_brand_name,
+        query = TROUBLESHOOTING_CONTENT_QUERY.format(
+            model_number=cs_model_name,
+            device=cs_product_name,
+            brand=cs_product_brand_name,
+        )
+
+        logger.info(f"Query: {query}")
+        try:
+            troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
+        except IndexError:
+            troubleshooting_content = FALLBACK_RESPONSE
+        except duckdb.duckdb.CatalogException:
+            troubleshooting_content = "No user manuals parsed yet, so can't give response, try uploading and then syncing"
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        if user_question := st.chat_input(
+            "Hello there! 👋🏿 Anuja here, how can I help you today?",
+            disabled=st.session_state.disabled,
+            on_submit=disable,
+        ):
+            st.session_state.messages.append({"role": "user", "content": user_question})
+            with st.chat_message("user"):
+                st.markdown(user_question)
+
+            with st.chat_message("assistant", avatar="👷🏽‍♀️"):
+                message_placeholder = st.empty()
+                full_response = ""
+                start_time = datetime.datetime.now()
+                for text_chunk in generate_text_with_gemini_stream(
+                    f"""Task:
+                    You are friendly support chatbot for helping customers troubleshoot given a user manual
+                    If unsure ask user to contact support via phone
+                    **Task:**
+                    Act like a conversational human, don't be too verbose but still answer the User's question here, given context:
+
+                    ```User question
+                    {user_question}
+                    ```
+
+                    ```Context
+                    {troubleshooting_content}
+                    ```
+                    """,
+                    model_name,
+                ):
+                    full_response += text_chunk
+                    message_placeholder.markdown(
+                        full_response + "▌"
+                    )  # Add a cursor for effect
+                message_placeholder.markdown(full_response)
+                end_time = datetime.datetime.now()
+
+            st.session_state.messages.append(
+                {"role": "assistant", "content": full_response}
             )
 
-            logger.info(f"Query: {query}")
-            try:
-                troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
-            except IndexError:
-                troubleshooting_content = FALLBACK_RESPONSE
-            except duckdb.duckdb.CatalogException:
-                troubleshooting_content = "No user manuals parsed yet, so can't give response, try uploading and then syncing"
-            for message in st.session_state.messages:
-                with st.chat_message(message["role"]):
-                    st.markdown(message["content"])
-
-            if user_question := st.chat_input(
-                "Hello there! 👋🏿 Anuja here, how can I help you today?"
-            ):
-                st.session_state.messages.append(
-                    {"role": "user", "content": user_question}
-                )
-                with st.chat_message("user"):
-                    st.markdown(user_question)
-
-                with st.chat_message("assistant", avatar="👷🏽‍♀️"):
-                    message_placeholder = st.empty()
-                    full_response = ""
-                    start_time = datetime.datetime.now()
-                    for text_chunk in generate_text_with_gemini_stream(
-                        f"""Task:
-                        You are friendly support chatbot for helping customers troubleshoot given a user manual
-                        If unsure ask user to contact support via phone
-                        **Task:**
-                        Act like a conversational human, don't be too verbose but still answer the User's question here, given context:
-
-                        ```User question
-                        {user_question}
-                        ```
-
-                        ```Context
-                        {troubleshooting_content}
-                        ```
-                        """,
-                        model_name,
-                    ):
-                        full_response += text_chunk
-                        message_placeholder.markdown(
-                            full_response + "▌"
-                        )  # Add a cursor for effect
-                    message_placeholder.markdown(full_response)
-                    end_time = datetime.datetime.now()
-
-                st.session_state.messages.append(
-                    {"role": "assistant", "content": full_response}
-                )
-
-                chat_log = {
-                    "timestamp": datetime.datetime.now(
-                        datetime.timezone.utc
-                    ).isoformat(),
-                    "user_id": st.session_state.username,
-                    "model_number": st.session_state.model_number,
-                    "product": st.session_state.product,
-                    "messages": st.session_state.messages,
-                    "metadata": {
-                        "gemini_prompt": user_question,
-                        "gemini_response_time": (end_time - start_time).total_seconds(),
-                    },
-                }
-                # save_chat_log(chat_log)
+            chat_log = {
+                "timestamp": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                "user_id": st.session_state.username,
+                "model_number": st.session_state.model_number,
+                "product": st.session_state.product,
+                "messages": st.session_state.messages,
+                "metadata": {
+                    "gemini_prompt": user_question,
+                    "gemini_response_time": (end_time - start_time).total_seconds(),
+                },
+            }
+            # save_chat_log(chat_log)
         elif st.session_state["authentication_status"] is False:
             st.error("Username/password is incorrect")
         elif st.session_state["authentication_status"] is None:

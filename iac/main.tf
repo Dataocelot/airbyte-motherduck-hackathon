@@ -38,9 +38,7 @@ resource "aws_s3_bucket" "s3_bucket" {
     Environment = "dev"
     Purpose     = "Hackathon"
   }
-  lifecycle {
-    prevent_destroy = false
-  }
+  force_destroy = true
 }
 
 resource "docker_image" "airbyte_hackathon" {
@@ -57,7 +55,7 @@ resource "docker_image" "airbyte_hackathon" {
 
 resource "docker_container" "airbyte-hackathon" {
   name  = "airbyte-motherduck-container"
-  image = "${docker_image.airbyte_hackathon.name}"
+  image = docker_image.airbyte_hackathon.name
   ports {
     internal = 8501
     external = 8501
@@ -87,7 +85,7 @@ resource "airbyte_source_s3" "source_s3" {
         recent_n_files_to_read_for_schema_discovery = 5
         schemaless                                  = true
         validation_policy                           = "Emit Record"
-        schemaless = false
+        schemaless                                  = false
       },
     ]
   }
