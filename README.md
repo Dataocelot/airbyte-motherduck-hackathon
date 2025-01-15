@@ -118,7 +118,7 @@ Next, you can runn the following terraform commands and Terraform will create th
 cd iac
 terraform init
 terraform plan
-terraform apply
+terraform apply -var-file="dev.tfvars"
 ```
 
 ---
