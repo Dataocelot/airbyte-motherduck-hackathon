@@ -137,7 +137,7 @@ you should also have a now running Docker container called `airbyte-motherduck-w
 
 <img alt="Docker container" src="docs/images/docker_container.png"/>
 
-The next task will be to load the data
+The next task will be to load the data in Airbyte
 
 ## Tools Used
 
