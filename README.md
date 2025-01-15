@@ -29,20 +29,38 @@ The Data sources are as follows:
 
 ## Requirements
 
-This project requires the following installed:
+This project requires the following software installed:
 
-- [Terraform](!https://developer.hashicorp.com/terraform/install)
-- [Docker desktop](!https://docs.docker.com/get-started/get-docker/)
+- [Terraform](!https://developer.hashicorp.com/terraform/install) (for provisioning resources)
+- [Docker desktop](!https://docs.docker.com/get-started/get-docker/) (for running the web app)
 
-It also assumes that you have access to an [**Airbyte cloud account**](https://airbyte.com/product/airbyte-cloud), **AWS account**, an **Airtable account**, and [**Google Gemini**](https://aistudio.google.com/apikey)
+### Accounts
 
-To set up, Terraform and to successfully build the docker image for this project you will need to fill in the values of the following credentials found in the [test.env](test.env) and in [iac/dev.tfvars](iac/dev.tfvars) files in the project's directory:
+You will also need access to an [**Airbyte cloud account**](https://airbyte.com/product/airbyte-cloud), [**AWS account**](https://aws.amazon.com/), an [**Airtable account**](https://airtable.com), and [**Google Gemini**](https://gemini.google.com/) account
+
+### Airtable
+
+For Airtable, [here](https://airtable.com/app9prJZjrqpUAnZt/shrbOzAfiZVwzwO9D) is the CRM table that was used for this project. You can copy this base to your own airtable account workspace.
+
+### Environmental variables
+
+To set up Terraform and to successfully build the Docker image for this project you will need to fill in the values for the following credentials found in the [test.env](test.env) and in [iac/dev.tfvars](iac/dev.tfvars) files in the project's directory:
+
+You can access your Airbyte `AIRBYTE_CLIENT_SECRET` and `AIRBYTE_CLIENT_ID` by following the steps included in this [link](!https://reference.airbyte.com/reference/authentication).
+
+For your Google Gemini API key, you can sign up for Google Gemini, and access your `GEMINI_API_KEY` by following the steps [here](https://aistudio.google.com/apikey)
+
+For your AWS keys, see this [link](!https://repost.aws/knowledge-center/create-access-key)
+
+To get your Motherduck API key follow the steps [here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token)
+
+> [test.env](test.env)
 
 ```bash
 # Fill in your keys here
 GEMINI_API_KEY= #Your Google GEMINI API key
 BUCKET_NAME= #Your S3 Bucket name
-DB_NAME= #Your DB name in Motherduck
+DB_NAME=my_db
 AIRTABLE_API_KEY= #Your Airtable access token
 ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
 AIRTABLE_BASE_ID= #The Airtable Base id
@@ -56,6 +74,8 @@ AIRBYTE_CLIENT_SECRET= # Your Airbyte application client secret
 MOTHERDUCK_API_KEY= #Your Motherduck API key
 ```
 
+> [iac/dev.tfvars](iac/dev.tfvars)
+
 ```bash
 airbyte_workspace_id  = "<FILL-IN>"
 aws_access_key_id     = "<FILL-IN>"
@@ -67,22 +87,15 @@ motherduck_api_key    = "<FILL-IN>"
 
 ## Steps
 
-After filling the credentials for the
-You will create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
-For your Gemini API key, you can sign up for Google Gemini, and access your API key
-You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
+**Note**: After filling in the values for the `test.env` file, you will need to **rename the `test.env` file to `.env`**.
 
-After filling the values in the `test.env` file, you will need to rename the `tets.env` file to `.env`.
-
-To get the project up and running, please make sure you have terraform set up on your machine, you can do install it from [here](https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli) as we use Terraform to provision the resources needed for this project (AWS S3, Airbyte source, Docker container).
-
-Assuming you have set up Terraform, and filled in your .env file, you can then run the following commands from the project root directory.
+Assuming you have set up Terraform, and now have your .env file and your [iac/dev.tfvars](iac/dev.tfvars) filled in, you can then run the following commands from the project root directory.
 
 ```bash
 source .env
 ```
 
-Next we create the resources by first changing the directory to the `iac` and then running the terraform commands. Terraform will create the required resources needed for the project.
+Next, you can runn the following terraform commands and Terraform will create the required resources needed for the project.
 
 ```bash
 cd iac
@@ -91,9 +104,7 @@ terraform plan
 terraform apply
 ```
 
-## Airtable
-
-[Here](https://airtable.com/app9prJZjrqpUAnZt/shrbOzAfiZVwzwO9D) is the CRM that was used for this project which was created, it was created in Airtable that . You can copy the base to your own airtable account workspace.
+If successful you should now see an s3 bucket already created, in s3 for you
 
 ## Tools Used
 
