@@ -121,7 +121,7 @@ resource "airbyte_source_airtable" "source_airtable" {
   configuration = {
     credentials = {
       personal_access_token = {
-        access_token = "${var.airtable_pat}"
+        api_key = "${var.airtable_pat}"
       }
     }
   }
