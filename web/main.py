@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.set_page_config(page_title="Dishwasher Repair App", page_icon="🧽")
+st.set_page_config(page_title="Appliance Ocelot Repair App", page_icon="🧽")
 
 PAGES = {"Chatbot": "chatbot", "Admin Manual Upload": "admin"}
 

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 BUCKET_NAME = "airbyte-motherduck-hackathon"
-SUPPORTED_BRANDS = ["LG", "ASKO", "MIELE", "BOSCH"]
+SUPPORTED_BRANDS = ["LG", "ASKO", "BEKO", "SAMSUNG"]
 
 
 def upload_to_s3(file, bucket_name, brand, object_name=None):
@@ -14,7 +14,7 @@ def upload_to_s3(file, bucket_name, brand, object_name=None):
     Args:
         file: The file to upload
         bucket_name: The S3 bucket to upload to
-        brand: The brand of the dishwasher
+        brand: The electronic brand
         object_name: The S3 object name. If not specified, file.name will be used
     """
     if object_name is None:
@@ -29,18 +29,18 @@ def upload_to_s3(file, bucket_name, brand, object_name=None):
 
 def app():
     # st.set_page_config(
-    #     page_title="WeFixDishwashers 🛠️🧽", page_icon=":dishwasher:", layout="wide"
+    #     page_title="Appliance Ocelot Manual upload 🛠️🧽", page_icon=":dishwasher:", layout="wide"
     # )
     # Container for main content
     with st.container():
-        st.title("Welcome to WeFixDishwashers 🛠️🧽 User Manual Upload")
+        st.title("Welcome to Appliance Ocelot's User Manual Upload")
         st.markdown(
-            "**Seamlessly upload user manuals for all your dishwasher brands.**"
+            "**Seamlessly upload the user manuals for your electrical appliance.**"
         )
 
     # Container for brand selection
     with st.container():
-        st.header("Select Dishwasher Brand")
+        st.header("Select a Brand")
         brands = SUPPORTED_BRANDS
         selected_brand = st.selectbox("brands", brands)
 
@@ -52,7 +52,7 @@ def app():
         )
 
     # Button to trigger upload
-    upload_button = st.button(label="Upload File")
+    upload_button = st.button(label="Upload + parse File")
 
     # Upload logic
     if upload_button and uploaded_file is not None and selected_brand:
@@ -63,4 +63,4 @@ def app():
     elif upload_button and selected_brand and not uploaded_file:
         st.warning("Please select a file to upload. ⚠️")
     elif upload_button and uploaded_file and not selected_brand:
-        st.warning("Please select a dishwasher brand. ⚠️")
+        st.warning("Please select a brand. ⚠️")

@@ -21,6 +21,8 @@ from helper.utils import (
 
 load_dotenv()
 
+FALLBACK_RESPONSE = "Apologies, for the issue you are currently experiencing. One of our technicians will get in touch with you"
+
 # Initialize logger
 logger_instance = Logger()
 logger = logger_instance.get_logger()
@@ -158,13 +160,13 @@ def app():
             troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
             logger.info(troubleshooting_content)
         except IndexError:
-            troubleshooting_content = "Apologies, for the issue you are currently experiencing. One of our technicians will get in touch with you"
+            troubleshooting_content = FALLBACK_RESPONSE
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
         if user_question := st.chat_input(
-            "Hello there! Anuja from Dishwasher here, how can I help?"
+            "Hello there! 👋🏿 Anuja from Dishwasher here, how can I help?"
         ):
             st.session_state.messages.append({"role": "user", "content": user_question})
             with st.chat_message("user"):
@@ -209,7 +211,7 @@ def app():
                 "product": st.session_state.product,
                 "messages": st.session_state.messages,
                 "metadata": {
-                    "gemini_prompt": user_question,  # The prompt is the user question
+                    "gemini_prompt": user_question,
                     "gemini_response_time": (end_time - start_time).total_seconds(),
                 },
             }

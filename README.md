@@ -10,13 +10,33 @@ In this hackathon, we aim to address this challenge by leveraging data and AI to
 
 We developed Anuja, a data-driven customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
 
-<img src="docs/images/diagram-export-15-01-2025-01_28_11.png">
+(Note: for this hackathon we limited the scope to only Dishwashers, but this can be extended to other applainces as well)
+
+### Data Architecture
+
+<img src="docs/images/diagram-export-15-01-2025-01_39_09.png">
+
+#### 1. Data sources
+
+The Data sources are as follows:
+
+- A Airtable CRM made thst records appliances purchased by customers
+  <img src="docs/images/customer_crm.png" alt="Airtable CRM table">
+
+- An S3 bucket that conatins parsed PDFs saved as JSON files
 
 # Setting Up
 
 ## Requirements
 
-For this project you will need to fill in the values of the following credentials found in the `test.env` and in `iac/dev.tfvars` files in the project root directory:
+This project requires the following installed:
+
+- [Terraform](!https://developer.hashicorp.com/terraform/install)
+- [Docker desktop](!https://docs.docker.com/get-started/get-docker/)
+
+It also assumes that you have access to an [**Airbyte cloud account**](https://airbyte.com/product/airbyte-cloud), **AWS account**, an **Airtable account**, and [**Google Gemini**](https://aistudio.google.com/apikey)
+
+To set up, Terraform and to successfully build the docker image for this project you will need to fill in the values of the following credentials found in the [test.env](test.env) and in [iac/dev.tfvars](iac/dev.tfvars) files in the project's directory:
 
 ```bash
 # Fill in your keys here
@@ -45,10 +65,11 @@ client_secret         = "<FILL-IN>"
 motherduck_api_key    = "<FILL-IN>"
 ```
 
-The `test.env` and the `dev.tfvars` files have the required keys for this project.
+## Steps
 
+After filling the credentials for the
 You will create an Airbyte cloud account, and you can sign up [here](https://airbyte.com/product/airbyte-cloud)
-For your Gemini API key, you can sign up for Google Gemini, and access your API key [here](https://aistudio.google.com/apikey)
+For your Gemini API key, you can sign up for Google Gemini, and access your API key
 You must have a Motherduck account to access the Motherduck API key. [Here](https://motherduck.com/docs/key-tasks/authenticating-and-connecting-to-motherduck/authenticating-to-motherduck/#authentication-using-an-access-token) is the link that shows you how to get a Mother duck API key
 
 After filling the values in the `test.env` file, you will need to rename the `tets.env` file to `.env`.
