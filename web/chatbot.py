@@ -144,6 +144,7 @@ def app():
         selected_model_number = st.selectbox("Select your Product:", cs_model_name)
         st.session_state.product = selected_product
         st.session_state.model_number = selected_model_number
+
         query = TROUBLESHOOTING_CONTENT_QUERY.format(
             model_number=cs_model_name,
             device=cs_product_name,
