@@ -1,0 +1,6 @@
+airbyte_workspace_id  = "<FILL-IN>"
+aws_access_key_id     = "<FILL-IN>"
+aws_secret_access_key = "<FILL-IN>"
+client_id             = "<FILL-IN>"
+client_secret         = "<FILL-IN>"
+motherduck_api_key    = "<FILL-IN>"
