@@ -133,7 +133,10 @@ and an Airbyte destination
 
 <img alt="Airbyte destination" src="docs/images/airbyte_destination.png"/>
 
-you should also have a now running Docker container called `airbyte-motherduck-web-container`
+and an Airbyte connection
+<img alt="Airbyte connection" src="docs/images/aribyte_connection.png"/>
+
+you should also have a now running as well on a Docker container called `airbyte-motherduck-web-container`
 
 <img alt="Docker container" src="docs/images/docker_container.png"/>
 
