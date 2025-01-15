@@ -3,6 +3,7 @@ import os
 import sys
 
 import boto3
+import duckdb
 import streamlit as st
 import streamlit_authenticator as stauth
 import yaml
@@ -155,6 +156,8 @@ def app():
             troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
         except IndexError:
             troubleshooting_content = FALLBACK_RESPONSE
+        except duckdb.duckdb.CatalogException:
+            troubleshooting_content = "No user manuals parsed yet, so can't give response, try uploading and then syncing"
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])

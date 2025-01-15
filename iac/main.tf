@@ -51,6 +51,7 @@ resource "docker_image" "airbyte_hackathon" {
     dockerfile = "../Dockerfile.app"
   }
   depends_on = [aws_s3_bucket.s3_bucket]
+  keep_locally  = false
 }
 
 

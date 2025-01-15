@@ -7,6 +7,7 @@ RUN pip install --cache-dir .cache/pip -r requirements.txt
 
 COPY ./web /app/web
 COPY ./helper /app/helper/
+COPY ../pdfprocessor /app/pdfprocessor/
 
 
 # Create a volume for storing data parsed data
