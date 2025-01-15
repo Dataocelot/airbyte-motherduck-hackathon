@@ -615,7 +615,7 @@ class PdfManualParser:
         return None
 
     def extract_all_sections_content(self) -> list:
-        result = []
+        results = []
         if not hasattr(self, "toc_details_dict"):
             self.toc_details = self._extract_toc_map_from_img()
         if self.toc_details:
@@ -623,9 +623,18 @@ class PdfManualParser:
                 section_name,
                 page_span,
             ) in self.toc_details.simplified_toc_mapping.items():
-                result.append(self.extract_section_content(section_name, *page_span))
+                results.append(self.extract_section_content(section_name, *page_span))
             logger.info("Extracted all contents found in the Table of contents")
-        return result
+        return results
+
+    def save_all_sections_content(self):
+        results = self.extract_all_sections_content()
+        for result in results:
+            result_bytes = json.dumps(result).encode("utf-8")
+            save_file_to_s3(
+                result_bytes,
+                self.relative_dir / "sections" / f"{result['section_name']}.json",
+            )
 
     def cleanup(self):
         try:

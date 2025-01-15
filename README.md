@@ -102,6 +102,8 @@ client_secret         = "<FILL-IN>"
 motherduck_api_key    = "<FILL-IN>"
 ```
 
+Lastly, there is the [web/auth.yml](web/auth.yml) file which has a sample login for 2 users. For this hackathon, feel free to modifdy this but ensure that the username = email addresses and that they match the ones [here](https://airtable.com/app9prJZjrqpUAnZt/shrbOzAfiZVwzwO9D/tblGK49VcjKu6b217/viw5zK3aRsBg6yeej?blocks=show)
+
 ## Steps
 
 **Note**: After filling in the values for the `test.env` file, you will need to **rename the `test.env` file to `.env`**.
@@ -138,8 +140,9 @@ and an Airbyte connection
 
 you should also have a now running as well on a Docker container called `airbyte-motherduck-web-container`
 
-<img alt="Docker container" src="docs/images/docker_container.png"/>
+<img alt="Docker container" src="docs/images/docker_container.png"/> and you should be able to access the web app on http://localhost:8502/
 
+**Note**: If this is your first time login in, you will need to login using the password you created in the [web/auth.yml](web/auth.yml) file
 The next task will be to load the data in Airbyte
 
 ## Tools Used
@@ -154,6 +157,7 @@ The next task will be to load the data in Airbyte
 - AWS S3: Data lake
 - Airtable: CRM
 - Terraform: Infrastructure as code
+- Earser.io: Diagrams
 
 ## Next Improvements
 
