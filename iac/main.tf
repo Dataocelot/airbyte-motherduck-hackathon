@@ -89,7 +89,7 @@ resource "airbyte_source_s3" "source_s3" {
       },
     ]
   }
-  name         = "airbyte_s3_src_${random_id.airbyte_id.hex}"
+  name         = "airbyte_s3_src"
   workspace_id = var.airbyte_workspace_id
 }
 
@@ -100,7 +100,19 @@ resource "airbyte_destination_duckdb" "destination_duckdb" {
     motherduck_api_key = "${var.motherduck_api_key}"
     schema             = "my_db"
   }
-  name         = "airbyte_motherduck_destination_${random_id.airbyte_id.hex}"
+  name         = "airbyte_motherduck_destination"
   workspace_id = var.airbyte_workspace_id
   depends_on   = [airbyte_source_s3.source_s3]
+}
+
+
+resource "airbyte_connection" "s3-airbyte-motherduck-connection" {
+  data_residency                       = "eu"
+  destination_id                       = airbyte_destination_duckdb.destination_duckdb.destination_id
+  name                                 = "air_md__dync"
+  namespace_definition                 = "destination"
+  non_breaking_schema_updates_behavior = "propagate_columns"
+  prefix                               = "hackathons"
+  source_id                            = airbyte_source_s3.source_s3.source_id
+  status                               = "inactive"
 }

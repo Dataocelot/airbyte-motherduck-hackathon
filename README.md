@@ -118,7 +118,7 @@ Next, you can runn the following terraform commands and Terraform will create th
 cd iac
 terraform init
 terraform plan
-terraform apply
+terraform apply -var-file="dev.tfvars"
 ```
 
 ---
@@ -133,11 +133,14 @@ and an Airbyte destination
 
 <img alt="Airbyte destination" src="docs/images/airbyte_destination.png"/>
 
-you should also have a now running Docker container called `airbyte-motherduck-web-container`
+and an Airbyte connection
+<img alt="Airbyte connection" src="docs/images/aribyte_connection.png"/>
+
+you should also have a now running as well on a Docker container called `airbyte-motherduck-web-container`
 
 <img alt="Docker container" src="docs/images/docker_container.png"/>
 
-The next task will be to load the data
+The next task will be to load the data in Airbyte
 
 ## Tools Used
 
@@ -151,3 +154,10 @@ The next task will be to load the data
 - AWS S3: Data lake
 - Airtable: CRM
 - Terraform: Infrastructure as code
+
+## Next Improvements
+
+- In addition to using Gemini, we can also create our own embeddings in MotherDuck and use it to help improve the search
+- The parsed documents can be processed
+- At the moment we are currently only using Gemini but we can leverage other LLM platforms like Open AI
+- We can make more insights of the data by expanding on the current data model

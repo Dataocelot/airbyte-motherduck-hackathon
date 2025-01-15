@@ -259,10 +259,10 @@ def save_file_to_s3(
             logger.info(f"File saved to s3://{bucket_name}/{object_key}")
             return True
         except ClientError as e:
-            logger.error(f"AWS ClientError: {e}")
+            logger.error(f"AWS ClientError: {e} bucket_name:{bucket_name}")
             return False
     except ValueError as e:
-        logger.error(f"Invalid input: {e}")
+        logger.error(f"Invalid input: {e} bucket_name:{bucket_name}")
         return False
     except Exception as e:
         logger.exception(f"An unexpected error occurred: {e}")

@@ -1,18 +1,24 @@
 import streamlit as st
+from streamlit_option_menu import option_menu
 
-st.set_page_config(page_title="Appliance Ocelot Repair App", page_icon="🧽")
+st.set_page_config(page_title="Ocelot Living", page_icon="🧽")
 
-PAGES = {"Chatbot": "chatbot", "Admin Manual Upload": "admin"}
+# 1. as sidebar menu
+with st.sidebar:
+    selected = option_menu(
+        "Main Menu",
+        ["Dashboard", "Upload portal", "Web Chat"],
+        icons=["house", "gear", "chat"],
+        menu_icon="cast",
+        default_index=1,
+    )
 
-st.sidebar.title("Navigation")
-selection = st.sidebar.radio("Go to", list(PAGES.keys()))
-
-page = PAGES[selection]
-if page == "chatbot":
+# page = PAGES[selection]
+if selected == "Web Chat":
     import chatbot
 
     chatbot.app()
-elif page == "admin":
-    import manual_upload
+elif selected == "Upload portal":
+    import upload_portal
 
-    manual_upload.app()
+    upload_portal.app()

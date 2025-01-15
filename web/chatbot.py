@@ -56,7 +56,7 @@ def upload_to_s3(file, bucket_name, brand, object_name=None):
     Args:
         file: The file to upload
         bucket_name: The S3 bucket to upload to
-        brand: The brand of the dishwasher
+        brand: The brand
         object_name: The S3 object name. If not specified, file.name will be used
     """
     if object_name is None:
@@ -80,19 +80,15 @@ def generate_text_with_gemini_stream(prompt, model="gemini-pro"):
                 for candidate in response.candidates:
                     if candidate.content.parts:
                         for part in candidate.content.parts:
-                            if hasattr(part, "text"):  # Check if the part has text
+                            if hasattr(part, "text"):
                                 yield part.text
             elif response.prompt_feedback:
-                if (
-                    response.prompt_feedback.block_reason
-                ):  # Check if the prompt was blocked
+                if response.prompt_feedback.block_reason:
                     st.error(
                         f"Gemini API Error: Prompt was blocked: {response.prompt_feedback.block_reason}"
                     )
                     return
-            elif (
-                response.usage_metadata
-            ):  # If there is usage metadata there is no error
+            elif response.usage_metadata:
                 continue
             else:
                 st.error(f"Gemini API Error: Unknown error format: {response}")
@@ -103,7 +99,7 @@ def generate_text_with_gemini_stream(prompt, model="gemini-pro"):
 
 
 def app():
-    st.title("Dishwasher Repair Chatbot")
+    st.title("Anuja (Your favourite repair Chatbot)")
     authenticator = stauth.Authenticate(
         config["credentials"],
         config["cookie"]["name"],
@@ -119,8 +115,8 @@ def app():
         if "username" not in st.session_state:
             authenticator.login()
 
-        if "dishwasher_model" not in st.session_state:
-            st.session_state.dishwasher_model = None
+        if "appliance_model" not in st.session_state:
+            st.session_state.appliance_model = None
 
         cs_accounts_table_obj = get_airtable_table(
             table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID"]
@@ -136,13 +132,11 @@ def app():
         for cs_account in cs_accounts:
             if cs_account["fields"]["Email"] == st.session_state["username"]:
                 break
-        logger.info(cs_account)
         cs_product = cs_product_table_obj.get(
             cs_account["fields"]["Product Category"][0],
         )
 
         cs_product_name = cs_product["fields"]["Name"]
-        logger.info(cs_product)
         cs_product_brand_name = cs_account["fields"]["Brand Name"][0]
 
         cs_model_name = cs_account["fields"]["Product Model Number"][0]
@@ -158,7 +152,6 @@ def app():
         logger.info(f"Query: {query}")
         try:
             troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
-            logger.info(troubleshooting_content)
         except IndexError:
             troubleshooting_content = FALLBACK_RESPONSE
         for message in st.session_state.messages:
@@ -166,7 +159,7 @@ def app():
                 st.markdown(message["content"])
 
         if user_question := st.chat_input(
-            "Hello there! 👋🏿 Anuja from Dishwasher here, how can I help?"
+            "Hello there! 👋🏿 Anuja here, how can I help you today?"
         ):
             st.session_state.messages.append({"role": "user", "content": user_question})
             with st.chat_message("user"):
