@@ -157,6 +157,7 @@ The next task will be to load the data in Airbyte
 - AWS S3: Data lake
 - Airtable: CRM
 - Terraform: Infrastructure as code
+- Earser.io: Diagrams
 
 ## Next Improvements
 

@@ -94,7 +94,7 @@ def app():
                 toc_mapping_method=ExtractorOption.GEMINI,
             )
             pdf_parser.temp_file_path = temp_file.name
-            pdf_parser.extract_all_sections_content()
+            pdf_parser.save_all_sections_content()
             pdf_parser.cleanup()
 
     elif upload_button and selected_brand and not uploaded_file:
