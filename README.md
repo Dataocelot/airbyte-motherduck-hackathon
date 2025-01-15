@@ -154,3 +154,10 @@ The next task will be to load the data in Airbyte
 - AWS S3: Data lake
 - Airtable: CRM
 - Terraform: Infrastructure as code
+
+## Next Improvements
+
+- In addition to using Gemini, we can also create our own embeddings in MotherDuck and use it to help improve the search
+- The parsed documents can be processed
+- At the moment we are currently only using Gemini but we can leverage other LLM platforms like Open AI
+- We can make more insights of the data by expanding on the current data model
