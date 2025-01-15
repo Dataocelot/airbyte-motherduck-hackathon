@@ -10,7 +10,7 @@ with st.sidebar:
         ["Upload portal", "Web Chat"],
         icons=["house", "gear", "chat"],
         menu_icon="cast",
-        default_index=1,
+        default_index=0,
     )
 
 # page = PAGES[selection]
