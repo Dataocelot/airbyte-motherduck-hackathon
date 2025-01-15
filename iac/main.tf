@@ -44,20 +44,20 @@ resource "aws_s3_bucket" "s3_bucket" {
 }
 
 resource "docker_image" "airbyte_hackathon" {
-  name = "airbyte_motherduck_hackathon:latest"
+  name = "airbyte_motherduck_hackathon:${random_id.unique_id.id}"
 
   build {
     context    = ".."
     dockerfile = "../Dockerfile.app"
   }
   depends_on = [aws_s3_bucket.s3_bucket]
-  keep_locally  = false
+
 }
 
 
 resource "docker_container" "airbyte-hackathon" {
   name  = "airbyte-motherduck-container"
-  image = docker_image.airbyte_hackathon.name
+  image = "${docker_image.airbyte_hackathon.name}"
   ports {
     internal = 8501
     external = 8501
