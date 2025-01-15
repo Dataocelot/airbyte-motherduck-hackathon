@@ -82,7 +82,7 @@ AIRTABLE_API_KEY= #Your Airtable access token
 ENVIRONMENT=AWS #Default is AWS or it can be LOCAL
 AIRTABLE_BASE_ID= #The Airtable Base id
 AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID= #The Airtable Customer accounts table id
-AIRBYTE_PRODUCT_TABLE_ID= #Your Airtable Product table id
+AIRTABLE_PRODUCT_TABLE_ID= #Your Airtable Product table id
 AIRBYTE_WORKSPACE_ID= #Your Airtable workspace ID
 AWS_ACCESS_KEY_ID= #Your AWS Access Key
 AWS_SECRET_ACCESS_KEY= #Your AWS Secret Access Key
@@ -143,7 +143,10 @@ you should also have a now running as well on a Docker container called `airbyte
 <img alt="Docker container" src="docs/images/docker_container.png"/> and you should be able to access the web app on http://localhost:8502/
 
 **Note**: If this is your first time login in, you will need to login using the password you created in the [web/auth.yml](web/auth.yml) file
+
 The next task will be to load the data in Airbyte
+
+Loading Data
 
 ## Tools Used
 

@@ -3,6 +3,7 @@ import os
 import sys
 
 import boto3
+import duckdb
 import streamlit as st
 import streamlit_authenticator as stauth
 import yaml
@@ -122,7 +123,7 @@ def app():
             table_id=os.environ["AIRTABLE_CUSTOMER_ACCOUNTS_TABLE_ID"]
         )
         cs_product_table_obj = get_airtable_table(
-            table_id=os.environ["AIRBYTE_PRODUCT_TABLE_ID"]
+            table_id=os.environ["AIRTABLE_PRODUCT_TABLE_ID"]
         )
 
         cs_accounts = cs_accounts_table_obj.all(
@@ -144,6 +145,7 @@ def app():
         selected_model_number = st.selectbox("Select your Product:", cs_model_name)
         st.session_state.product = selected_product
         st.session_state.model_number = selected_model_number
+
         query = TROUBLESHOOTING_CONTENT_QUERY.format(
             model_number=cs_model_name,
             device=cs_product_name,
@@ -154,6 +156,8 @@ def app():
             troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
         except IndexError:
             troubleshooting_content = FALLBACK_RESPONSE
+        except duckdb.duckdb.CatalogException:
+            troubleshooting_content = "No user manuals parsed yet, so can't give response, try uploading and then syncing"
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])

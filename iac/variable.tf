@@ -41,3 +41,8 @@ variable "motherduck_api_key" {
   type        = string
   description = "Your motherduck API key"
 }
+
+variable "airtable_pat" {
+  type        = string
+  description = "Your airtable PAT"
+}
