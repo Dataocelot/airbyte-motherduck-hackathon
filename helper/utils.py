@@ -329,33 +329,6 @@ def get_object_from_s3(
         return None
 
 
-def create_motherduck_conn(
-    token: str | None = os.getenv("MOTHERDUCK_API_KEY"), db_name: str = "my_db"
-) -> duckdb.DuckDBPyConnection:
-    """
-    Create a connection to a MotherDuck database
-
-    Parameters
-    ----------
-    token : str
-        The API token for authentication
-    db_name : str
-        The name of the database to connect to
-
-    Returns
-    -------
-    duckdb.DuckDBPyConnection
-        The connection object to the MotherDuck database
-    """
-    try:
-        conn = duckdb.connect(f"md:{db_name}?motherduck_token={token}")
-    except Exception as e:
-        logger.error(f"Unable to connect to Motherduck {e}")
-        raise ValueError("Motherduck token is required") from e
-
-    return conn
-
-
 def get_airtable_table(
     table_id: str,
     base_id: str | None = None,
