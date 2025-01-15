@@ -84,9 +84,10 @@ resource "airbyte_source_s3" "source_s3" {
           "output/brand=*/model_number=*/sections/*.json",
         ]
         name                                        = "manual_sections"
-        recent_n_files_to_read_for_schema_discovery = 3
+        recent_n_files_to_read_for_schema_discovery = 5
         schemaless                                  = true
         validation_policy                           = "Emit Record"
+        schemaless = false
       },
     ]
   }
