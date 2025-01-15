@@ -10,7 +10,7 @@ In this hackathon, we aim to address this challenge by leveraging data and AI to
 
 We developed Anuja, a data-driven customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
 
-<img src="docs/images/diagram-export-15-01-2025-01_02_23.png">
+<img src="docs/images/diagram-export-15-01-2025-01_28_11.png">
 
 # Setting Up
 
