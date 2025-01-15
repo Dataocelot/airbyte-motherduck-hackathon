@@ -6,13 +6,15 @@ Recently, we discovered that a significant portion of customer support time is s
 
 In this hackathon, we aim to address this challenge by leveraging data and AI to create a scalable solution. Our mission is to enhance customer support efficiency while empowering customers to independently troubleshoot and resolve common issues.
 
-## The Solution: `Anuja`
+## The Solution: `👷🏽‍♀️ Anuja`
 
 We developed Anuja, a data-driven customer support chatbot designed to assist customers in resolving issues quickly and independently. By parsing product user manuals into actionable data, Anuja provides instant and accurate troubleshooting solutions. This allows our support team to focus on high-priority issues, improving overall service quality and customer experience.
 
-## Setting Up
+<img src="docs/images/diagram-export-15-01-2025-01_28_11.png">
 
-# Requirements
+# Setting Up
+
+## Requirements
 
 For this project you will need to fill in the values of the following credentials found in the `test.env` and in `iac/dev.tfvars` files in the project root directory:
 
