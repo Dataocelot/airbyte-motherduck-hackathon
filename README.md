@@ -145,6 +145,8 @@ you should also have a now running as well on a Docker container called `airbyte
 **Note**: If this is your first time login in, you will need to login using the password you created in the [web/auth.yml](web/auth.yml) file
 The next task will be to load the data in Airbyte
 
+Loading Data
+
 ## Tools Used
 
 - Airbyte: Data Ingestion

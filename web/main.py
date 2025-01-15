@@ -7,7 +7,7 @@ st.set_page_config(page_title="Ocelot Living", page_icon="🧽")
 with st.sidebar:
     selected = option_menu(
         "Main Menu",
-        ["Dashboard", "Upload portal", "Web Chat"],
+        ["Upload portal", "Web Chat"],
         icons=["house", "gear", "chat"],
         menu_icon="cast",
         default_index=1,
