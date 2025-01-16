@@ -38,20 +38,18 @@ resource "aws_s3_bucket" "s3_bucket" {
     Environment = "dev"
     Purpose     = "Hackathon"
   }
-  lifecycle {
-    prevent_destroy = false
-  }
+  force_destroy = true
 }
 
 resource "docker_image" "airbyte_hackathon" {
-  name = "airbyte_motherduck_hackathon:latest"
+  name = "airbyte_motherduck_hackathon:${random_id.unique_id.id}"
 
   build {
     context    = ".."
     dockerfile = "../Dockerfile.app"
   }
   depends_on = [aws_s3_bucket.s3_bucket]
-  keep_locally  = false
+
 }
 
 
@@ -83,11 +81,12 @@ resource "airbyte_source_s3" "source_s3" {
         globs = [
           "output/brand=*/model_number=*/sections/*.json",
         ]
-        name                                        = "manual_sections"
-        recent_n_files_to_read_for_schema_discovery = 5
-        schemaless                                  = true
-        validation_policy                           = "Emit Record"
-        schemaless = false
+
+        input_schema = "{\"brand\": \"string\", \"section_name\": \"string\", \"markdown_text\": \"string\", \"document_hash\": \"string\", \"model_number\": \"string\", \"device\": \"string\"}"
+        name         = "manual_sections"
+        validation_policy = "Emit Record"
+        schemaless        = false
+
       },
     ]
   }
