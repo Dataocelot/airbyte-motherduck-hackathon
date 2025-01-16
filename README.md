@@ -20,7 +20,7 @@ We developed Anuja, a data-driven AI customer support chatbot designed to assist
 
 The Data sources are:
 
-- An Airtable CRM made containing the records of appliances purchased by customers at Appliance Ocelot
+- An Airtable CRM made containing the records of appliances purchased by customers at Ocelot Living
   <img src="docs/images/customer_crm.png" alt="Airtable CRM table"/>
 
 - An S3 bucket that conatins semi-structured data of the parsed output (JSON) of PDFs of User manuals.

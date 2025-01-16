@@ -7,7 +7,6 @@ from pathlib import Path
 from typing import BinaryIO, Optional
 
 import boto3
-import duckdb
 from botocore.exceptions import ClientError
 from dotenv import load_dotenv
 from pyairtable import Api
@@ -49,28 +48,6 @@ JSON_PG_NUM_PROMPT = """This a table of contents {file_type} file for a {device}
             {expected_output}
             ```
             """
-
-TROUBLESHOOTING_CONTENT_QUERY = """
-                                with temp as (
-                                select
-                                    _airbyte_data->>'$.data' as data
-                                from
-                                _airbyte_raw_hackathon_manual_sections
-                                ),
-
-                                manual_sections as (
-                                    select data->'brand' as brand, data->'device' as device, data->'model_number' as model_number,
-                                    data->'section_name' as section_name, data->'markdown_text' as markdown_text
-                                from temp)
-
-                                SELECT markdown_text
-                                from manual_sections
-                                WHERE model_number='{model_number}'
-                                AND device='{device}'
-                                AND brand='{brand}'
-                                AND section_name='cleaning_and_caring'
-                                LIMIT 1
-                        """
 
 
 def auto_create_dir(directory: str | Path) -> None:
