@@ -159,7 +159,9 @@ def extract_doc_map_using_gemini(
         response = chat_session.send_message("pathob\n")
         try:
             json_response = json.loads(response.text)
-            save_dict_to_json(json_response, Path(file).parent / f"{dest_filename}.txt")
+            save_dict_to_json(
+                json_response, Path(file).parent / f"{dest_filename}.json"
+            )
             return json_response
         except json.JSONDecodeError as e:
             logger.error(f"Failed to decode JSON response: {e}")
@@ -485,13 +487,13 @@ class PdfManualParser:
                         toc_mappings,
                         self.output_path
                         / self.document_mapping_path
-                        / "toc_mapping.txt",
+                        / "toc_mapping.json",
                     )
                     save_file_to_s3(
                         toc_json_bytes,
                         self.relative_dir
                         / self.document_mapping_path
-                        / "toc_mapping.txt",
+                        / "toc_mapping.json",
                     )
                     logger.info("Saving Table of contents to S3")
 
@@ -517,7 +519,7 @@ class PdfManualParser:
                         simplified_toc_map,
                         self.output_path
                         / self.document_mapping_path
-                        / "simplified_toc_mapping.txt",
+                        / "simplified_toc_mapping.json",
                     )
                     if self.environment == Environment.AWS:
                         # Convert the dictionary to a JSON string
@@ -529,7 +531,7 @@ class PdfManualParser:
                             json_bytes,
                             self.relative_dir
                             / self.document_mapping_path
-                            / "simplified_toc_mapping.txt",
+                            / "simplified_toc_mapping.json",
                         )
                     logger.info("Table of contents extracted and Saved")
 
@@ -550,7 +552,7 @@ class PdfManualParser:
 
         if self.toc_details:
             # fmt: off
-            toc_simplified_mapping_path = self.document_mapping_path / "simplified_toc_mapping.txt"
+            toc_simplified_mapping_path = self.document_mapping_path / "simplified_toc_mapping.json"
             # fmt: on
 
             if self.environment == Environment.LOCAL:

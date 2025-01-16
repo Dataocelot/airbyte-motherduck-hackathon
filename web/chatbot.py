@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import sys
 
@@ -12,23 +13,43 @@ from yaml.loader import SafeLoader
 
 sys.path.append(os.path.dirname(os.path.dirname(__file__)))
 
-from db_utils import get_duckdb_conn, is_table_exists
+from chat_utils import (
+    create_model,
+    determine_relevant_section_for_help,
+    get_column_value,
+    get_duckdb_conn,
+    get_relevant_markdown_content,
+    is_table_exists,
+)
 
 from helper.logger import Logger
-from helper.utils import TROUBLESHOOTING_CONTENT_QUERY, get_airtable_table
+from helper.utils import get_airtable_table
 
 load_dotenv()
 
-FALLBACK_RESPONSE = "Apologies, for the issue you are currently experiencing. One of our technicians will get in touch with you"
 
 # Initialize logger
 logger_instance = Logger()
 logger = logger_instance.get_logger()
 
-proj_dir = os.path.dirname(__file__)
+gemini_model = create_model(
+    temperature=1,
+    top_p=0.95,
+    top_k=40,
+    max_output_tokens=8192,
+    response_mime_type="application/json",
+)
 
-motherduck_conn = get_duckdb_conn("my_db", os.environ["MOTHERDUCK_API_KEY"])
-is_table_created = is_table_exists(motherduck_conn, "my_db", "manual_sections")
+proj_dir = os.path.dirname(__file__)
+is_table_created = False
+try:
+    motherduck_conn = get_duckdb_conn("my_db", os.environ["MOTHERDUCK_API_KEY"])
+    is_table_created = is_table_exists(
+        motherduck_conn, "main", "_airbyte_raw_hackathon_manual_sections"
+    )
+except Exception as motherduck_exception:
+    logger.exception(f"Cannot connect to motherduck {motherduck_exception}")
+
 
 try:
     with open(f"{proj_dir}/auth.yml") as file:
@@ -152,28 +173,40 @@ def app():
         st.session_state.model_number = selected_model_number
         # Airtable
 
-        query = TROUBLESHOOTING_CONTENT_QUERY.format(
-            model_number=cs_model_name,
-            device=cs_product_name,
-            brand=cs_product_brand_name,
-        )
-
-        logger.info(f"Query: {query}")
-        try:
-            troubleshooting_content = motherduck_conn.query(query).fetchall()[0][0]
-        except IndexError:
-            troubleshooting_content = FALLBACK_RESPONSE
-        except duckdb.duckdb.CatalogException:
-            troubleshooting_content = "No user manuals parsed yet, so can't give response, try uploading and then syncing"
         for message in st.session_state.messages:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
 
         if user_question := st.chat_input(
             "Hello there! 👋🏿 Anuja here, how can I help you today?",
-            disabled=st.session_state.disabled,
+            disabled=False,  # st.session_state.disabled,
             on_submit=disable,
         ):
+            table_of_contents = get_column_value(
+                motherduck_conn,
+                "section_name",
+                cs_product_brand_name,
+                selected_model_number,
+                selected_product,
+            )
+            logger.info(f"TOC {table_of_contents}")
+            relevant_section_names = determine_relevant_section_for_help(
+                gemini_model, table_of_contents, user_question
+            )
+
+            logger.info(f"These are the relevant sections {relevant_section_names}")
+
+            if relevant_section_names:
+                md_text = get_relevant_markdown_content(
+                    motherduck_conn,
+                    relevant_section_names,
+                    cs_product_brand_name,
+                    selected_product,
+                    selected_model_number,
+                )
+            else:
+                md_text = "Apologies, for the issue you are currently experiencing. One of our technicians will get in touch with you via phone"
+
             st.session_state.messages.append({"role": "user", "content": user_question})
             with st.chat_message("user"):
                 st.markdown(user_question)
@@ -194,7 +227,7 @@ def app():
                     ```
 
                     ```Context
-                    {troubleshooting_content}
+                    {md_text}
                     ```
                     """,
                     model_name,
